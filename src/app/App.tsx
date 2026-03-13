@@ -13,7 +13,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("solar-panels");
   const isClickScroll = useRef(false);
 
-  const [data, setData] = useState<DealsData | null>(null);
+  const [data, setData] = useState<DealsData>({
+    panels: [], inverters: [], storage: [], racking: [], accessories: [], diy: [], components: [], misc: []
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,8 +23,10 @@ export default function App() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetchAllDeals();
-      setData(res);
+      // Fetch everything, but update the state for each category as it finishes
+      await fetchAllDeals((partial) => {
+        setData(prev => ({ ...prev, ...partial }));
+      });
     } catch (err: any) {
       console.error("API error:", err);
       setError(err.message || "Failed to fetch inventory");

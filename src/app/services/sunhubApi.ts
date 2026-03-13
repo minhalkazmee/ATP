@@ -420,42 +420,39 @@ async function fetchCategory(category: string): Promise<RawDeal[]> {
   return deals;
 }
 
-export async function fetchAllDeals(): Promise<DealsData> {
-  // Fetch specific categories to ensure all inventory is captured
-  const [
-    panelDeals,
-    inverterDeals,
-    batteryDeals,
-    rackingDeals,
-    accessoryDeals,
-    chargerDeals,
-    componentDeals,
-    smartDeals,
-  ] = await Promise.all([
-    fetchCategory("solar-panels"),
-    fetchCategory("inverters"),
-    fetchCategory("batteries"),
-    fetchCategory("racking"),
-    fetchCategory("solar-accessories"),
-    fetchCategory("ev-charging-stations"),
-    fetchCategory("components-parts"),
-    fetchCategory("smart-energy-solutions"),
-  ]);
+export async function fetchAllDeals(onProgress?: (data: Partial<DealsData>) => void): Promise<DealsData> {
+  const categories: { key: keyof DealsData; slug: string; transformer: (deals: RawDeal[]) => any }[] = [
+    { key: "panels", slug: "solar-panels", transformer: (d) => d.filter((x) => x.status === "Active").map(transformPanel) },
+    { key: "inverters", slug: "inverters", transformer: (d) => d.filter((x) => x.status === "Active").map(transformInverter) },
+    { key: "storage", slug: "batteries", transformer: (d) => d.filter((x) => x.status === "Active").map(transformStorage) },
+    { key: "racking", slug: "racking", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
+    { key: "accessories", slug: "solar-accessories", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
+    { key: "misc", slug: "ev-charging-stations", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
+    { key: "components", slug: "components-parts", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
+    { key: "diy", slug: "smart-energy-solutions", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
+  ];
 
-  // Transform and filter Active status for each
-  const panels = panelDeals.filter((d) => d.status === "Active").map(transformPanel);
-  const inverters = inverterDeals.filter((d) => d.status === "Active").map(transformInverter);
-  const storage = batteryDeals.filter((d) => d.status === "Active").map(transformStorage);
-  
-  const racking = rackingDeals.filter((d) => d.status === "Active").map(transformGeneric);
-  const accessories = accessoryDeals.filter((d) => d.status === "Active").map(transformGeneric);
-  const components = componentDeals.filter((d) => d.status === "Active").map(transformGeneric);
-  
-  // Combine DIY and Misc from EV Chargers and Smart Energy Solutions
-  const diy = smartDeals.filter((d) => d.status === "Active").map(transformGeneric);
-  const misc = chargerDeals.filter((d) => d.status === "Active").map(transformGeneric);
+  const result: DealsData = {
+    panels: [], inverters: [], storage: [], racking: [], accessories: [], diy: [], components: [], misc: []
+  };
 
-  return { panels, inverters, storage, racking, accessories, diy, components, misc };
+  // Fetch categories sequentially to provide that "batch loading" feel and not slam the server
+  for (const cat of categories) {
+    try {
+      const deals = await fetchCategory(cat.slug);
+      const transformed = cat.transformer(deals);
+      result[cat.key] = transformed;
+      
+      // Notify UI immediately after each category is ready
+      if (onProgress) {
+        onProgress({ [cat.key]: transformed });
+      }
+    } catch (err) {
+      console.error(`Failed to fetch category ${cat.slug}:`, err);
+    }
+  }
+
+  return result;
 }
 
 
