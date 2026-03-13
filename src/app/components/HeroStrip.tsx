@@ -51,15 +51,15 @@ export function HeroStrip({ data, loading }: HeroStripProps) {
       <div className="flex flex-col">
         <div className="flex justify-between items-center py-2 px-4 border-b border-gray-100">
           <span className="font-semibold text-gray-800 text-sm">Active Deals</span>
-          <span className="text-gray-600 text-sm">{loading ? "-" : formatNumber(deals)}</span>
+          <span className="text-gray-600 text-sm">{formatNumber(deals)}</span>
         </div>
         <div className="flex justify-between items-center py-2 px-4 border-b border-gray-100">
           <span className="font-semibold text-gray-800 text-sm">{title.includes("Batteries") ? "Active MWh" : "Active MWs"}</span>
-          <span className="text-gray-600 text-sm">{loading ? "-" : formatDecimals(mws)}</span>
+          <span className="text-gray-600 text-sm">{formatDecimals(mws)}</span>
         </div>
         <div className="flex justify-between items-center py-2 px-4 bg-white">
           <span className="font-semibold text-gray-800 text-sm">Active Listed Quantity (Pcs)</span>
-          <span className="text-gray-600 text-sm">{loading ? "-" : formatNumber(qty)}</span>
+          <span className="text-gray-600 text-sm">{formatNumber(qty)}</span>
         </div>
       </div>
     </div>
@@ -111,7 +111,7 @@ export function HeroStrip({ data, loading }: HeroStripProps) {
           <div className="inline-block px-8 py-6 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 border border-orange-100 shadow-sm transition-all hover:scale-[1.01]">
             <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4">
               <span className="text-5xl md:text-7xl font-black text-orange-600 tracking-tighter">
-                {loading ? "---" : formatDecimals(totalMws)}
+                {formatDecimals(totalMws)}
               </span>
               <span className="text-xl md:text-3xl font-bold text-gray-700 tracking-tight">
                 MW Available Inventory
@@ -122,7 +122,7 @@ export function HeroStrip({ data, loading }: HeroStripProps) {
           <div className="flex items-center gap-2 px-6 py-2 bg-gray-50 border border-gray-100 rounded-full shadow-inner">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
             <span className="text-gray-700 font-bold text-lg">
-              {loading ? "Counting..." : formatNumber(totalDeals)}
+              {formatNumber(totalDeals)}
             </span>
             <span className="text-gray-500 font-medium">Active Deals Today</span>
           </div>

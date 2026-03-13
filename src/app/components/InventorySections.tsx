@@ -716,14 +716,6 @@ interface InventorySectionsProps {
 }
 
 export function InventorySections({ refs, data, loading, error, onRetry }: InventorySectionsProps) {
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-[1400px] px-5 py-10">
-        <LoadingState message="Loading inventory from Sunhub…" />
-      </div>
-    );
-  }
-
   if (error || !data) {
     return (
       <div className="mx-auto max-w-[1400px] px-5 py-10">
