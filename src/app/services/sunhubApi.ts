@@ -392,64 +392,72 @@ function transformGeneric(deal: RawDeal): GenericProduct {
    MAIN FETCH – category-based with limit
    ════════════════════════════════════ */
 
-const PAGE_LIMIT = 12; // Reverted back to 12 as requested
+const PAGE_LIMIT = 12;
 
-/** Fetch ALL pages for one category, respecting the limit param. */
-async function fetchCategory(category: string): Promise<RawDeal[]> {
+/** Fetch results page-by-page for one category and notify via callback. */
+async function fetchCategory(
+  category: string,
+  onPage: (deals: RawDeal[]) => void
+): Promise<RawDeal[]> {
   const url = (page: number) =>
     `${API_BASE}?limit=${PAGE_LIMIT}&page=${page}&category=${category}`;
 
-  // First page – also tells us how many pages exist
-  const firstResp = await fetch(url(1), {
-    headers: { Accept: "application/json" },
-  });
-  const firstData: ApiResponse = await firstResp.json();
-  const totalPages = firstData.pagination.totalPages;
-
-  const deals: RawDeal[] = [...firstData.data];
-
-  // Fetch remaining pages sequentially to avoid overloading the server
-  for (let page = 2; page <= totalPages; page++) {
-    const resp = await fetch(url(page), {
+  try {
+    // First page – tells us how many pages exist
+    const firstResp = await fetch(url(1), {
       headers: { Accept: "application/json" },
     });
-    const data: ApiResponse = await resp.json();
-    deals.push(...data.data);
-  }
+    const firstData: ApiResponse = await firstResp.json();
+    const totalPages = firstData.pagination.totalPages;
 
-  return deals;
+    // Notify immediately with first page
+    onPage(firstData.data);
+    const allDeals: RawDeal[] = [...firstData.data];
+
+    // Fetch remaining pages – can be done in parallel or sequentially
+    // Let's do sequential to be safe with server load, but now we are streaming!
+    for (let page = 2; page <= totalPages; page++) {
+      const resp = await fetch(url(page), {
+        headers: { Accept: "application/json" },
+      });
+      const data: ApiResponse = await resp.json();
+      onPage(data.data);
+      allDeals.push(...data.data);
+    }
+    return allDeals;
+  } catch (err) {
+    console.error(`Error in fetchCategory(${category}):`, err);
+    return [];
+  }
 }
 
-export async function fetchAllDeals(onProgress?: (data: Partial<DealsData>) => void): Promise<DealsData> {
-  const categories: { key: keyof DealsData; slug: string; transformer: (deals: RawDeal[]) => any }[] = [
-    { key: "panels", slug: "solar-panels", transformer: (d) => d.filter((x) => x.status === "Active").map(transformPanel) },
-    { key: "inverters", slug: "inverters", transformer: (d) => d.filter((x) => x.status === "Active").map(transformInverter) },
-    { key: "storage", slug: "batteries", transformer: (d) => d.filter((x) => x.status === "Active").map(transformStorage) },
-    { key: "racking", slug: "racking", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
-    { key: "accessories", slug: "solar-accessories", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
-    { key: "misc", slug: "ev-charging-stations", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
-    { key: "components", slug: "components-parts", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
-    { key: "diy", slug: "smart-energy-solutions", transformer: (d) => d.filter((x) => x.status === "Active").map(transformGeneric) },
+export async function fetchAllDeals(onProgress?: (key: keyof DealsData, items: any[]) => void): Promise<DealsData> {
+  const categories: { key: keyof DealsData; slug: string; transformer: (deal: RawDeal) => any }[] = [
+    { key: "panels", slug: "solar-panels", transformer: transformPanel },
+    { key: "inverters", slug: "inverters", transformer: transformInverter },
+    { key: "storage", slug: "batteries", transformer: transformStorage },
+    { key: "racking", slug: "racking", transformer: transformGeneric },
+    { key: "accessories", slug: "solar-accessories", transformer: transformGeneric },
+    { key: "misc", slug: "ev-charging-stations", transformer: transformGeneric },
+    { key: "components", slug: "components-parts", transformer: transformGeneric },
+    { key: "diy", slug: "smart-energy-solutions", transformer: transformGeneric },
   ];
 
   const result: DealsData = {
     panels: [], inverters: [], storage: [], racking: [], accessories: [], diy: [], components: [], misc: []
   };
 
-  // Fetch categories sequentially to provide that "batch loading" feel and not slam the server
   for (const cat of categories) {
-    try {
-      const deals = await fetchCategory(cat.slug);
-      const transformed = cat.transformer(deals);
-      result[cat.key] = transformed;
+    await fetchCategory(cat.slug, (rawDeals) => {
+      const activeDeals = rawDeals.filter(d => d.status === "Active");
+      const transformed = activeDeals.map(cat.transformer);
       
-      // Notify UI immediately after each category is ready
+      result[cat.key].push(...transformed);
+      
       if (onProgress) {
-        onProgress({ [cat.key]: transformed });
+        onProgress(cat.key, transformed);
       }
-    } catch (err) {
-      console.error(`Failed to fetch category ${cat.slug}:`, err);
-    }
+    });
   }
 
   return result;

@@ -23,9 +23,18 @@ export default function App() {
     try {
       setLoading(true);
       setError(null);
-      // Fetch everything, but update the state for each category as it finishes
-      await fetchAllDeals((partial) => {
-        setData(prev => ({ ...prev, ...partial }));
+      
+      // Reset data on start to avoid duplicates on retry
+      setData({
+        panels: [], inverters: [], storage: [], racking: [], accessories: [], diy: [], components: [], misc: []
+      });
+
+      // Stream data page-by-page for each category
+      await fetchAllDeals((key, items) => {
+        setData(prev => ({
+          ...prev,
+          [key]: [...prev[key], ...items]
+        }));
       });
     } catch (err: any) {
       console.error("API error:", err);
