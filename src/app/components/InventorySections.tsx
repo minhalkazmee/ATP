@@ -259,8 +259,6 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
     frameColor: "All", connector: "All", warehouse: "All", tier: "All",
     wpMin: "", wpMax: "",
     priceWMin: "", priceWMax: "",
-    pricePalletMin: "", pricePalletMax: "",
-    priceContainerMin: "", priceContainerMax: "",
   });
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -269,8 +267,6 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
     frameColor: "All", connector: "All", warehouse: "All", tier: "All",
     wpMin: "", wpMax: "",
     priceWMin: "", priceWMax: "",
-    pricePalletMin: "", pricePalletMax: "",
-    priceContainerMin: "", priceContainerMax: "",
   });
 
   const uniqueVals = (key: keyof SolarPanel) => [...new Set(data.map((r) => String(r[key])).filter(Boolean))];
@@ -293,14 +289,6 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
       if (filters.priceWMin && r.pricePerWatt < Number(filters.priceWMin)) return false;
       if (filters.priceWMax && r.pricePerWatt > Number(filters.priceWMax)) return false;
 
-      // Price/Pallet filter
-      if (filters.pricePalletMin && r.palletPriceNum < Number(filters.pricePalletMin)) return false;
-      if (filters.pricePalletMax && r.palletPriceNum > Number(filters.pricePalletMax)) return false;
-
-      // Price/Container filter
-      if (filters.priceContainerMin && r.containerPriceNum < Number(filters.priceContainerMin)) return false;
-      if (filters.priceContainerMax && r.containerPriceNum > Number(filters.priceContainerMax)) return false;
-
       return true;
     });
   }, [filters, data]);
@@ -315,8 +303,6 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
           <FilterRange label="Price/W" sublabel="($/W)" min={filters.priceWMin} max={filters.priceWMax} onMinChange={(v) => setFilters({ ...filters, priceWMin: v })} onMaxChange={(v) => setFilters({ ...filters, priceWMax: v })} minPlaceholder="0.000" maxPlaceholder="" />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-          <FilterRange label="Price/Pallet" sublabel="($)" min={filters.pricePalletMin} max={filters.pricePalletMax} onMinChange={(v) => setFilters({ ...filters, pricePalletMin: v })} onMaxChange={(v) => setFilters({ ...filters, pricePalletMax: v })} minPlaceholder="0" maxPlaceholder="" />
-          <FilterRange label="Price/Container" sublabel="($)" min={filters.priceContainerMin} max={filters.priceContainerMax} onMinChange={(v) => setFilters({ ...filters, priceContainerMin: v })} onMaxChange={(v) => setFilters({ ...filters, priceContainerMax: v })} minPlaceholder="0" maxPlaceholder="" />
           <FilterSelect label="Bifaciality" value={filters.bifacial} onChange={(v) => setFilters({ ...filters, bifacial: v })} options={["Yes", "No"]} />
           <FilterSelect label="Frame Color" value={filters.frameColor} onChange={(v) => setFilters({ ...filters, frameColor: v })} options={uniqueVals("frameColor")} />
         </div>
@@ -340,9 +326,7 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
               <th style={thStyle} className={H}>Cell Type</th>
               <SortHeader sup="1">Wp</SortHeader>
               <SortHeader sup="2"><span className="hidden md:inline">Price/W</span><span className="md:hidden">$/W</span></SortHeader>
-              <SortHeader className={H}>Price/Pallet</SortHeader>
-              <SortHeader className={H}>Price/Container</SortHeader>
-              <SortHeader className={H} sup="3">Module Qty</SortHeader>
+              <SortHeader className={H} sup="3">Total Qty</SortHeader>
               <SortHeader className={H}>Pallets</SortHeader>
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability<sup style={{ fontSize: "0.55rem", color: "#9CA3AF" }}>7</sup></th>
@@ -364,8 +348,6 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
                 <td style={tdStyle} className={H}>{r.type}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.wp}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.palletPrice}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }} className={H}>{r.palletPriceNum > 0 ? `$${r.palletPriceNum.toLocaleString()}` : "—"}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }} className={H}>{r.containerPriceNum > 0 ? `$${r.containerPriceNum.toLocaleString()}` : "—"}</td>
                 <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.moduleQty}</td>
                 <td style={tdStyle} className={H}>{r.palletsRemaining}</td>
                 <td style={tdStyle} className={H}>{r.moq}</td>
@@ -379,13 +361,11 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
                       <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3 flex-1">
                         <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
                         <div className="md:hidden"><DetailItem label="Cell Type" value={r.type} /></div>
-                        <div className="md:hidden"><DetailItem label="Module Qty" value={r.moduleQty} /></div>
+                        <div className="md:hidden"><DetailItem label="Total Qty" value={r.moduleQty} /></div>
                         <div className="md:hidden"><DetailItem label="Pallets" value={r.palletsRemaining} /></div>
                         <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
                         <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
                         <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
-                        <div className="md:hidden"><DetailItem label="Price/Pallet" value={r.palletPriceNum > 0 ? `$${r.palletPriceNum.toLocaleString()}` : "—"} /></div>
-                        <div className="md:hidden"><DetailItem label="Price/Container" value={r.containerPriceNum > 0 ? `$${r.containerPriceNum.toLocaleString()}` : "—"} /></div>
                         <DetailItem label="Cells" value={r.cells} />
                         <DetailItem label="Bifacial" value={r.bifacial} />
                         <DetailItem label="Frame Color" value={r.frameColor} />
@@ -465,7 +445,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
               <th style={thStyle} className={H}>Type</th>
               <SortHeader>Power</SortHeader>
               <SortHeader>Price</SortHeader>
-              <SortHeader className={H}>Qty</SortHeader>
+              <SortHeader className={H}>Total Qty</SortHeader>
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability</th>
               <th style={thStyle} className={H}>Location</th>
@@ -498,7 +478,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
                       <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3 flex-1">
                         <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
                         <div className="md:hidden"><DetailItem label="Type" value={r.type} /></div>
-                        <div className="md:hidden"><DetailItem label="Qty" value={r.qty} /></div>
+                        <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
                         <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
                         <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
                         <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
@@ -565,7 +545,7 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
               <th style={thStyle} className={H}>Chemistry</th>
               <SortHeader>Capacity</SortHeader>
               <SortHeader>Price</SortHeader>
-              <SortHeader className={H}>Qty</SortHeader>
+              <SortHeader className={H}>Total Qty</SortHeader>
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability</th>
               <th style={thStyle} className={H}>Location</th>
@@ -597,7 +577,7 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
                     <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
                       <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
                       <div className="md:hidden"><DetailItem label="Chemistry" value={r.chemistry} /></div>
-                      <div className="md:hidden"><DetailItem label="Qty" value={r.qty} /></div>
+                      <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
                       <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
                       <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
                       <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
@@ -650,7 +630,7 @@ function GenericProductSection({
                 <th style={thStyle} className={H}>Part Number</th>
                 <th style={thStyle} className={H}>Category</th>
                 <SortHeader>Price</SortHeader>
-                <SortHeader className={H}>Qty</SortHeader>
+                <SortHeader className={H}>Total Qty</SortHeader>
                 <th style={thStyle} className={H}>MOQ</th>
                 <th style={thStyle} className={H}>Availability</th>
                 <th style={thStyle} className={H}>Location</th>
@@ -675,7 +655,7 @@ function GenericProductSection({
                       <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
                         <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
                         <div className="md:hidden"><DetailItem label="Category" value={r.category} /></div>
-                        <div className="md:hidden"><DetailItem label="Qty" value={r.qty} /></div>
+                        <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
                         <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
                         <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
                         <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
