@@ -431,7 +431,24 @@ async function fetchCategory(
   }
 }
 
+// Minimal in-memory cache to survive hot reloads (in dev) or brief navigation
+let dealsCache: DealsData | null = null;
+let dealsCacheTime = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export async function fetchAllDeals(onProgress?: (key: keyof DealsData, items: any[]) => void): Promise<DealsData> {
+  const now = Date.now();
+  if (dealsCache && now - dealsCacheTime < CACHE_TTL_MS) {
+    console.log("Using cached deals data");
+    // If we have a cache, immediately trigger onProgress for all keys to populate UI quickly
+    if (onProgress) {
+      for (const [key, items] of Object.entries(dealsCache)) {
+        onProgress(key as keyof DealsData, items);
+      }
+    }
+    return dealsCache;
+  }
+
   const categories: { key: keyof DealsData; slug: string; transformer: (deal: RawDeal) => any }[] = [
     { key: "panels", slug: "solar-panels", transformer: transformPanel },
     { key: "inverters", slug: "inverters", transformer: transformInverter },
@@ -447,20 +464,25 @@ export async function fetchAllDeals(onProgress?: (key: keyof DealsData, items: a
     panels: [], inverters: [], storage: [], racking: [], accessories: [], diy: [], components: [], misc: []
   };
 
-  for (const cat of categories) {
-    await fetchCategory(cat.slug, (rawDeals) => {
-      const activeDeals = rawDeals.filter(d => d.status === "Active");
-      const transformed = activeDeals.map(cat.transformer);
-      
-      result[cat.key].push(...transformed);
-      
-      if (onProgress) {
-        onProgress(cat.key, transformed);
-      }
-    });
-  }
+  // Fetch all categories simultaneously
+  await Promise.all(
+    categories.map(async (cat) => {
+      await fetchCategory(cat.slug, (rawDeals) => {
+        const activeDeals = rawDeals.filter(d => d.status === "Active");
+        const transformed = activeDeals.map(cat.transformer);
+        
+        result[cat.key].push(...transformed);
+        
+        if (onProgress) {
+          onProgress(cat.key, transformed);
+        }
+      });
+    })
+  );
+
+  dealsCache = result;
+  dealsCacheTime = Date.now();
 
   return result;
 }
-
 
