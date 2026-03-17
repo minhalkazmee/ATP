@@ -1,5 +1,5 @@
 import { forwardRef, useState, useMemo, useEffect } from "react";
-import { Plus, Minus, ArrowUpDown, Loader2 } from "lucide-react";
+import { Plus, Minus, ArrowUpDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { AvailabilityBadge } from "./AvailabilityBadge";
 import {
   fetchAllDeals,
@@ -250,6 +250,35 @@ function EmptyState({ message }: { message: string }) {
 }
 
 /* ════════════════════════════════════
+   PAGINATION CONTROLS
+   ════════════════════════════════════ */
+
+function PaginationControls({ page, totalPages, setPage }: { page: number, totalPages: number, setPage: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="mt-4 flex items-center justify-between bg-white px-5 py-3 rounded-xl" style={{ border: "1px solid #E5E7EB" }}>
+      <div className="flex flex-1 items-center justify-between">
+        <p className="text-sm font-medium" style={{ fontFamily: font, color: "#374151" }}>
+          Page <span className="font-semibold text-gray-900">{page}</span> of <span className="font-semibold text-gray-900">{totalPages}</span>
+        </p>
+        <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+          <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            <span className="sr-only">Previous</span>
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            <span className="sr-only">Next</span>
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+const ITEMS_PER_PAGE = 10;
+
+/* ════════════════════════════════════
    SOLAR PANELS SECTION
    ════════════════════════════════════ */
 
@@ -261,6 +290,9 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
     priceWMin: "", priceWMax: "",
   });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [filters]);
 
   const clearFilters = () => setFilters({
     productType: "All", manufacturer: "All", bifacial: "All",
@@ -292,6 +324,9 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
       return true;
     });
   }, [filters, data]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedData = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
     <Section ref={sectionRef} id="solar-panels" title="Solar Panels">
@@ -340,7 +375,7 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
                   <p style={{ fontFamily: font, fontWeight: 500, fontSize: "0.9rem", color: "#9CA3AF" }}>No modules match your filters.</p>
                 </td>
               </tr>
-            ) : filtered.map((r) => [
+            ) : paginatedData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
                 <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
                 <td style={tdStyle}>{r.brand}</td>
@@ -388,6 +423,7 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
           </tbody>
         </table>
       </div>
+      <PaginationControls page={page} totalPages={totalPages} setPage={setPage} />
 
       <div className="mt-4 flex flex-col gap-0.5">
         {[
@@ -410,6 +446,10 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
 function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HTMLElement | null>; data: Inverter[] }) {
   const [filters, setFilters] = useState({ manufacturer: "All", type: "All", phase: "All", sector: "All" });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [filters]);
+
   const clearFilters = () => setFilters({ manufacturer: "All", type: "All", phase: "All", sector: "All" });
   const uniqueVals = (key: keyof Inverter) => [...new Set(data.map((r) => String(r[key])).filter(Boolean))];
 
@@ -422,6 +462,9 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
       return true;
     });
   }, [filters, data]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedData = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
     <Section ref={sectionRef} id="inverters" title="Inverters">
@@ -458,7 +501,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
                   <p style={{ fontFamily: font, fontWeight: 500, fontSize: "0.9rem", color: "#9CA3AF" }}>No inverters match your filters.</p>
                 </td>
               </tr>
-            ) : filtered.map((r) => [
+            ) : paginatedData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
                 <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
                 <td style={tdStyle}>{r.brand}</td>
@@ -501,6 +544,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
           </tbody>
         </table>
       </div>
+      <PaginationControls page={page} totalPages={totalPages} setPage={setPage} />
     </Section>
   );
 }
@@ -512,6 +556,10 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
 function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTMLElement | null>; data: StorageItem[] }) {
   const [filters, setFilters] = useState({ manufacturer: "All", type: "All", chemistry: "All" });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [filters]);
+
   const clearFilters = () => setFilters({ manufacturer: "All", type: "All", chemistry: "All" });
   const uniqueVals = (key: keyof StorageItem) => [...new Set(data.map((r) => String(r[key])).filter(Boolean))];
 
@@ -523,6 +571,9 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
       return true;
     });
   }, [filters, data]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedData = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
     <Section ref={sectionRef} id="storage" title="Storage">
@@ -558,7 +609,7 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
                   <p style={{ fontFamily: font, fontWeight: 500, fontSize: "0.9rem", color: "#9CA3AF" }}>No storage products match your filters.</p>
                 </td>
               </tr>
-            ) : filtered.map((r) => [
+            ) : paginatedData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
                 <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
                 <td style={tdStyle}>{r.brand}</td>
@@ -597,6 +648,7 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
           </tbody>
         </table>
       </div>
+      <PaginationControls page={page} totalPages={totalPages} setPage={setPage} />
     </Section>
   );
 }
@@ -615,6 +667,10 @@ function GenericProductSection({
   emptyMessage: string;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+  const paginatedData = data.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
     <Section ref={sectionRef} id={id} title={title}>
@@ -637,7 +693,7 @@ function GenericProductSection({
               </tr>
             </thead>
             <tbody>
-              {data.map((r) => [
+              {paginatedData.map((r) => [
                 <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
                   <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
                   <td style={tdStyle}>{r.brand}</td>
@@ -675,6 +731,7 @@ function GenericProductSection({
           </table>
         </div>
       )}
+      {data.length > 0 && <PaginationControls page={page} totalPages={totalPages} setPage={setPage} />}
     </Section>
   );
 }
