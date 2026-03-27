@@ -431,22 +431,30 @@ async function fetchCategory(
   }
 }
 
-// Minimal in-memory cache to survive hot reloads (in dev) or brief navigation
-let dealsCache: DealsData | null = null;
-let dealsCacheTime = 0;
+const CACHE_KEY = "sunhub_deals_cache";
+const CACHE_TIME_KEY = "sunhub_deals_cache_time";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export async function fetchAllDeals(onProgress?: (key: keyof DealsData, items: any[]) => void): Promise<DealsData> {
   const now = Date.now();
-  if (dealsCache && now - dealsCacheTime < CACHE_TTL_MS) {
-    console.log("Using cached deals data");
-    // If we have a cache, immediately trigger onProgress for all keys to populate UI quickly
-    if (onProgress) {
-      for (const [key, items] of Object.entries(dealsCache)) {
-        onProgress(key as keyof DealsData, items);
+  
+  try {
+    const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+    if (cachedTime && now - parseInt(cachedTime, 10) < CACHE_TTL_MS) {
+      const cachedDataStr = localStorage.getItem(CACHE_KEY);
+      if (cachedDataStr) {
+        const cachedData = JSON.parse(cachedDataStr) as DealsData;
+        console.log("Using cached deals data from localStorage");
+        if (onProgress) {
+          for (const [key, items] of Object.entries(cachedData)) {
+            onProgress(key as keyof DealsData, items);
+          }
+        }
+        return cachedData;
       }
     }
-    return dealsCache;
+  } catch (e) {
+    console.warn("Could not read cache from localStorage", e);
   }
 
   const categories: { key: keyof DealsData; slug: string; transformer: (deal: RawDeal) => any }[] = [
@@ -480,8 +488,12 @@ export async function fetchAllDeals(onProgress?: (key: keyof DealsData, items: a
     })
   );
 
-  dealsCache = result;
-  dealsCacheTime = Date.now();
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(result));
+    localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+  } catch (e) {
+    console.warn("Could not write cache to localStorage", e);
+  }
 
   return result;
 }
