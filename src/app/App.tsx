@@ -6,7 +6,7 @@ import { InventorySections } from "./components/InventorySections";
 import { FAQSection } from "./components/FAQSection";
 import { Footer } from "./components/Footer";
 import { fetchAllDeals, DealsData } from "./services/sunhubApi";
-import { trackEvent } from "./services/acTrack";
+import { trackEvent, setTrackedEmail } from "./services/acTrack";
 
 const sectionIds = ["solar-panels", "inverters", "storage", "racking", "accessories", "diy", "components", "misc"];
 
@@ -20,6 +20,63 @@ const categoryLabels: Record<string, string> = {
   "components": "Components & Parts",
   "misc": "EV Charging & Misc",
 };
+
+function EmailCaptureBar() {
+  const [visible, setVisible] = useState(!sessionStorage.getItem('ac_email'));
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  if (!visible) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.includes('@')) return;
+    setTrackedEmail(email);
+    trackEvent('contact_identified', { source: 'capture_bar' });
+    setSubmitted(true);
+    setTimeout(() => setVisible(false), 1800);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+      background: '#0B2545', borderTop: '2px solid #FF6B00',
+      padding: '10px 20px', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', gap: 12,
+    }}>
+      {submitted ? (
+        <span style={{ color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', fontWeight: 600 }}>
+          ✓ You're in — deals will now be tracked for you.
+        </span>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <span style={{ color: '#CBD5E1', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
+            Get notified on new solar deals:
+          </span>
+          <input
+            type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="your@email.com" required
+            style={{
+              fontFamily: 'Inter, sans-serif', fontSize: '0.82rem',
+              padding: '7px 12px', borderRadius: 6, border: '1.5px solid #334155',
+              background: '#1E3A5F', color: '#fff', outline: 'none', width: 220,
+            }}
+          />
+          <button type="submit" style={{
+            background: 'linear-gradient(135deg, #FF6B00, #FF8533)',
+            color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700,
+            fontSize: '0.82rem', padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
+          }}>
+            Notify Me
+          </button>
+          <button type="button" onClick={() => setVisible(false)} style={{
+            background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '1rem', lineHeight: 1,
+          }}>✕</button>
+        </form>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("solar-panels");
@@ -123,6 +180,7 @@ export default function App() {
       <InventorySections refs={refs} data={data} loading={loading} error={error} onRetry={loadData} />
       <FAQSection />
       <Footer />
+      <EmailCaptureBar />
     </div>
   );
 }

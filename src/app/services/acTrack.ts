@@ -1,6 +1,28 @@
-// Read ?email= from URL on module load and persist to sessionStorage
+// 1. Try ?email= URL param (from AC campaign links)
 const _urlEmail = new URLSearchParams(window.location.search).get('email');
-if (_urlEmail) sessionStorage.setItem('ac_email', _urlEmail);
+if (_urlEmail) {
+  sessionStorage.setItem('ac_email', _urlEmail);
+} else if (!sessionStorage.getItem('ac_email')) {
+  // 2. Try reading AC site tracking cookie (__crmcontact) set when a contact
+  //    clicks any link from an AC email to a site-tracking-enabled domain
+  const _acCookie = document.cookie.split(';').find(c => c.trim().startsWith('__crmcontact='));
+  if (_acCookie) {
+    const raw = decodeURIComponent(_acCookie.split('=').slice(1).join('='));
+    let cookieEmail: string | null = null;
+    // Format 1: query string — email=xxx&hash=xxx
+    try { cookieEmail = new URLSearchParams(raw).get('email'); } catch {}
+    // Format 2: plain JSON — {"email":"xxx"}
+    if (!cookieEmail) try { cookieEmail = JSON.parse(raw).email ?? null; } catch {}
+    // Format 3: base64-encoded JSON
+    if (!cookieEmail) try { cookieEmail = JSON.parse(atob(raw)).email ?? null; } catch {}
+    if (cookieEmail) sessionStorage.setItem('ac_email', cookieEmail);
+  }
+}
+
+// Expose a setter so the email capture bar can register a cold visitor's email
+export function setTrackedEmail(email: string) {
+  sessionStorage.setItem('ac_email', email);
+}
 
 // inquiry_clicked only — fires event AND updates AC contact custom fields via proxy
 export async function trackInquiry(data: Record<string, unknown>): Promise<void> {
