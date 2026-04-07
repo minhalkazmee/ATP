@@ -19,6 +19,17 @@ if (_urlEmail) {
   }
 }
 
+// 3. Server-side fallback — reads __crmcontact even if HttpOnly (JS-invisible)
+//    Runs async; email available for any event that fires after user interaction
+if (!localStorage.getItem('ac_email')) {
+  fetch('/api/identify')
+    .then(r => r.json())
+    .then(({ email }: { email: string | null }) => {
+      if (email) localStorage.setItem('ac_email', email);
+    })
+    .catch(() => {});
+}
+
 // Expose a setter so the email capture bar can register a cold visitor's email
 export function setTrackedEmail(email: string) {
   localStorage.setItem('ac_email', email);
