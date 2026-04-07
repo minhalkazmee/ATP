@@ -1,4 +1,5 @@
 import { forwardRef, useState, useMemo, useEffect } from "react";
+import { trackEvent, trackInquiry } from "../services/acTrack";
 import { Plus, Minus, ArrowUpDown, Loader2, ChevronDown } from "lucide-react";
 import { AvailabilityBadge } from "./AvailabilityBadge";
 import {
@@ -12,6 +13,72 @@ import {
 
 type Availability = "Available Now" | "Inbound" | "Contact Us";
 const font = "Inter, sans-serif";
+
+/* ════════════════════════════════════
+   TRACKING PAYLOAD BUILDERS
+   Kept compact to fit AC's 255-char eventdata limit.
+   Fields chosen for recovery email automations:
+   category, sku, brand, part, key spec, price, qty, availability.
+   ════════════════════════════════════ */
+
+function panelPayload(r: SolarPanel) {
+  const p: Record<string, unknown> = {
+    cat: "solar-panels",
+    sku: r.sku,
+    brand: r.brand,
+    part: r.partNum,
+    wp: r.wp,
+    price: r.palletPrice,
+    qty: r.moduleQty,
+    avail: r.avail,
+  };
+  if (r.imageUrl) p.img = r.imageUrl;
+  return p;
+}
+
+function inverterPayload(r: Inverter) {
+  const p: Record<string, unknown> = {
+    cat: "inverters",
+    sku: r.sku,
+    brand: r.brand,
+    part: r.partNum,
+    power: r.power,
+    price: r.price,
+    qty: r.qty,
+    avail: r.avail,
+  };
+  if (r.imageUrl) p.img = r.imageUrl;
+  return p;
+}
+
+function storagePayload(r: StorageItem) {
+  const p: Record<string, unknown> = {
+    cat: "storage",
+    sku: r.sku,
+    brand: r.brand,
+    part: r.partNum,
+    capacity: r.capacity,
+    price: r.price,
+    qty: r.qty,
+    avail: r.avail,
+  };
+  if (r.imageUrl) p.img = r.imageUrl;
+  return p;
+}
+
+function genericPayload(r: GenericProduct, categoryLabel: string) {
+  const p: Record<string, unknown> = {
+    cat: categoryLabel,
+    sku: r.sku,
+    brand: r.brand,
+    part: r.partNum,
+    price: r.price,
+    qty: r.qty,
+    avail: r.avail,
+  };
+  if (r.imageUrl) p.img = r.imageUrl;
+  return p;
+}
 
 /* ════════════════════════════════════
    Section heading icon images
@@ -93,7 +160,7 @@ function ClearFiltersBtn({ onClick }: { onClick: () => void }) {
   );
 }
 
-function InquireBtn({ partNum }: { partNum: string }) {
+function InquireBtn({ partNum, trackingData }: { partNum: string; trackingData?: Record<string, unknown> }) {
   const subject = encodeURIComponent(`Inquiry for SKU: ${partNum}`);
   const body = encodeURIComponent(`Hello Sunhub Sales Team,\n\nI am interested in the following product:\n\nPart Number: ${partNum}\n\nPlease provide more information regarding pricing and availability.\n\nThank you!`);
   const mailto = `mailto:sales@sunhub.com?subject=${subject}&body=${body}`;
@@ -101,6 +168,7 @@ function InquireBtn({ partNum }: { partNum: string }) {
   return (
     <a
       href={mailto}
+      onClick={() => trackInquiry(trackingData ?? { partNum })}
       className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
       style={{
         background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
@@ -119,16 +187,23 @@ function InquireBtn({ partNum }: { partNum: string }) {
   );
 }
 
-function FilterSelect({ label, sublabel, value, onChange, options }: {
+function FilterSelect({ label, sublabel, value, onChange, options, trackCat, trackField }: {
   label: string; sublabel?: string; value: string; onChange: (v: string) => void; options: string[];
+  trackCat?: string; trackField?: string;
 }) {
+  const handleChange = (v: string) => {
+    onChange(v);
+    if (trackCat && trackField && v !== 'All') {
+      trackEvent('filter_applied', { cat: trackCat, field: trackField, value: v });
+    }
+  };
   return (
     <div>
       <label style={labelStyle}>
         {label}
         {sublabel && <span style={{ fontWeight: 400, fontSize: "0.68rem", color: "#9CA3AF", marginLeft: 4 }}>{sublabel}</span>}
       </label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle, cursor: "pointer", appearance: "auto" }}>
+      <select value={value} onChange={(e) => handleChange(e.target.value)} style={{ ...inputStyle, cursor: "pointer", appearance: "auto" }}>
         <option value="All">All</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -153,9 +228,12 @@ function FilterRange({ label, sublabel, min, max, onMinChange, onMaxChange, minP
   );
 }
 
-function ExpandBtn({ expanded, onClick }: { expanded: boolean; onClick: () => void }) {
+function ExpandBtn({ expanded, onClick, onExpand }: { expanded: boolean; onClick: () => void; onExpand?: () => void }) {
   return (
-    <button onClick={onClick} className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-gray-100">
+    <button
+      onClick={() => { if (!expanded) onExpand?.(); onClick(); }}
+      className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-gray-100"
+    >
       {expanded ? <Minus className="h-3.5 w-3.5" style={{ color: "#4B5563" }} /> : <Plus className="h-3.5 w-3.5" style={{ color: "#4B5563" }} />}
     </button>
   );
@@ -326,19 +404,19 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
     <Section ref={sectionRef} id="solar-panels" title="Solar Panels">
       <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-          <FilterSelect label="Cell / Panel Type" value={filters.productType} onChange={(v) => setFilters({ ...filters, productType: v })} options={uniqueVals("type")} />
-          <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} />
+          <FilterSelect label="Cell / Panel Type" value={filters.productType} onChange={(v) => setFilters({ ...filters, productType: v })} options={uniqueVals("type")} trackCat="solar-panels" trackField="cellType" />
+          <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="solar-panels" trackField="manufacturer" />
           <FilterRange label="Pmax" sublabel="(min and max)" min={filters.wpMin} max={filters.wpMax} onMinChange={(v) => setFilters({ ...filters, wpMin: v })} onMaxChange={(v) => setFilters({ ...filters, wpMax: v })} minPlaceholder="0" maxPlaceholder="700" />
           <FilterRange label="Price/W" sublabel="($/W)" min={filters.priceWMin} max={filters.priceWMax} onMinChange={(v) => setFilters({ ...filters, priceWMin: v })} onMaxChange={(v) => setFilters({ ...filters, priceWMax: v })} minPlaceholder="0.000" maxPlaceholder="" />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-          <FilterSelect label="Bifaciality" value={filters.bifacial} onChange={(v) => setFilters({ ...filters, bifacial: v })} options={["Yes", "No"]} />
-          <FilterSelect label="Frame Color" value={filters.frameColor} onChange={(v) => setFilters({ ...filters, frameColor: v })} options={uniqueVals("frameColor")} />
+          <FilterSelect label="Bifaciality" value={filters.bifacial} onChange={(v) => setFilters({ ...filters, bifacial: v })} options={["Yes", "No"]} trackCat="solar-panels" trackField="bifacial" />
+          <FilterSelect label="Frame Color" value={filters.frameColor} onChange={(v) => setFilters({ ...filters, frameColor: v })} options={uniqueVals("frameColor")} trackCat="solar-panels" trackField="frameColor" />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-          <FilterSelect label="Connector" value={filters.connector} onChange={(v) => setFilters({ ...filters, connector: v })} options={uniqueVals("connector")} />
-          <FilterSelect label="Tier" value={filters.tier} onChange={(v) => setFilters({ ...filters, tier: v })} options={uniqueVals("tier")} />
-          <FilterSelect label="Warehouse State" sublabel="(US Location)" value={filters.warehouse} onChange={(v) => setFilters({ ...filters, warehouse: v })} options={uniqueVals("state")} />
+          <FilterSelect label="Connector" value={filters.connector} onChange={(v) => setFilters({ ...filters, connector: v })} options={uniqueVals("connector")} trackCat="solar-panels" trackField="connector" />
+          <FilterSelect label="Tier" value={filters.tier} onChange={(v) => setFilters({ ...filters, tier: v })} options={uniqueVals("tier")} trackCat="solar-panels" trackField="tier" />
+          <FilterSelect label="Warehouse State" sublabel="(US Location)" value={filters.warehouse} onChange={(v) => setFilters({ ...filters, warehouse: v })} options={uniqueVals("state")} trackCat="solar-panels" trackField="warehouseState" />
           <div className="flex items-end">
             <ClearFiltersBtn onClick={clearFilters} />
           </div>
@@ -371,7 +449,7 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
               </tr>
             ) : visibleData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
+                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', panelPayload(r))} /></td>
                 <td style={tdStyle}>{r.brand}</td>
                 <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                 <td style={tdStyle} className={H}>{r.type}</td>
@@ -407,7 +485,7 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
                         {r.snowLoad ? <DetailItem label="Snow Load" value={r.snowLoad} /> : null}
                       </div>
                       <div className="shrink-0 lg:pb-0.5">
-                        <InquireBtn partNum={r.partNum || r.brand} />
+                        <InquireBtn partNum={r.partNum || r.brand} trackingData={panelPayload(r)} />
                       </div>
                     </div>
                   </td>
@@ -464,10 +542,10 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
     <Section ref={sectionRef} id="inverters" title="Inverters">
       <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-          <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} />
-          <FilterSelect label="Inverter Type" value={filters.type} onChange={(v) => setFilters({ ...filters, type: v })} options={uniqueVals("type")} />
-          <FilterSelect label="Phase" value={filters.phase} onChange={(v) => setFilters({ ...filters, phase: v })} options={uniqueVals("phase")} />
-          <FilterSelect label="Sector" value={filters.sector} onChange={(v) => setFilters({ ...filters, sector: v })} options={uniqueVals("sector")} />
+          <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="inverters" trackField="manufacturer" />
+          <FilterSelect label="Inverter Type" value={filters.type} onChange={(v) => setFilters({ ...filters, type: v })} options={uniqueVals("type")} trackCat="inverters" trackField="type" />
+          <FilterSelect label="Phase" value={filters.phase} onChange={(v) => setFilters({ ...filters, phase: v })} options={uniqueVals("phase")} trackCat="inverters" trackField="phase" />
+          <FilterSelect label="Sector" value={filters.sector} onChange={(v) => setFilters({ ...filters, sector: v })} options={uniqueVals("sector")} trackCat="inverters" trackField="sector" />
         </div>
         <div className="mt-4 flex items-end"><ClearFiltersBtn onClick={clearFilters} /></div>
       </div>
@@ -497,7 +575,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
               </tr>
             ) : visibleData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
+                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', inverterPayload(r))} /></td>
                 <td style={tdStyle}>{r.brand}</td>
                 <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                 <td style={tdStyle} className={H}>{r.type}</td>
@@ -528,7 +606,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
                         <DetailItem label="Features" value={r.features} />
                       </div>
                       <div className="shrink-0 lg:pb-0.5">
-                        <InquireBtn partNum={r.partNum || r.brand} />
+                        <InquireBtn partNum={r.partNum || r.brand} trackingData={inverterPayload(r)} />
                       </div>
                     </div>
                   </td>
@@ -573,9 +651,9 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
     <Section ref={sectionRef} id="storage" title="Storage">
       <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
-          <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} />
-          <FilterSelect label="System Type" value={filters.type} onChange={(v) => setFilters({ ...filters, type: v })} options={uniqueVals("type")} />
-          <FilterSelect label="Chemistry" value={filters.chemistry} onChange={(v) => setFilters({ ...filters, chemistry: v })} options={uniqueVals("chemistry")} />
+          <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="storage" trackField="manufacturer" />
+          <FilterSelect label="System Type" value={filters.type} onChange={(v) => setFilters({ ...filters, type: v })} options={uniqueVals("type")} trackCat="storage" trackField="systemType" />
+          <FilterSelect label="Chemistry" value={filters.chemistry} onChange={(v) => setFilters({ ...filters, chemistry: v })} options={uniqueVals("chemistry")} trackCat="storage" trackField="chemistry" />
         </div>
         <div className="mt-4 flex items-end"><ClearFiltersBtn onClick={clearFilters} /></div>
       </div>
@@ -605,7 +683,7 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
               </tr>
             ) : visibleData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
+                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', storagePayload(r))} /></td>
                 <td style={tdStyle}>{r.brand}</td>
                 <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                 <td style={tdStyle} className={H}>{r.chemistry}</td>
@@ -633,7 +711,7 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
                       <DetailItem label="Features" value={r.features} />
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <InquireBtn partNum={r.partNum || r.brand} />
+                      <InquireBtn partNum={r.partNum || r.brand} trackingData={storagePayload(r)} />
                     </div>
                   </td>
                 </tr>
@@ -689,7 +767,7 @@ function GenericProductSection({
             <tbody>
               {visibleData.map((r) => [
                 <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} /></td>
+                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', genericPayload(r, id))} /></td>
                   <td style={tdStyle}>{r.brand}</td>
                   <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.category}</td>
@@ -715,7 +793,7 @@ function GenericProductSection({
                         {r.category ? <DetailItem label="Category" value={r.category} /> : null}
                       </div>
                       <div className="mt-4 flex justify-end">
-                      <InquireBtn partNum={r.partNum || r.brand} />
+                      <InquireBtn partNum={r.partNum || r.brand} trackingData={genericPayload(r, id)} />
                     </div>
                     </td>
                   </tr>

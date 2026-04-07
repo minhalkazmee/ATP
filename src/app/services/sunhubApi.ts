@@ -41,6 +41,7 @@ export interface SolarPanel {
   weight: string;
   dims: string;
   datasheetUrl: string;
+  imageUrl: string;
   qtyNum: number;
   wattageNum: number;
 }
@@ -89,6 +90,7 @@ export interface StorageItem {
   dims: string;
   features: string;
   datasheetUrl: string;
+  imageUrl: string;
   qtyNum: number;
   capacityNum: number;
 }
@@ -111,6 +113,7 @@ export interface GenericProduct {
   dims: string;
   features: string;
   datasheetUrl: string;
+  imageUrl: string;
 }
 
 export interface DealsData {
@@ -259,6 +262,14 @@ function extractDatasheetUrl(deal: RawDeal): string {
   return "";
 }
 
+function extractImageUrl(deal: RawDeal): string {
+  if (!deal.attachments) return "";
+  const img = deal.attachments.find((a) => a.type === "Image" && a.path);
+  if (img) return `${MEDIA_BASE}${img.path}`;
+  return "";
+}
+
+
 /* ════════════════════════════════════
    TRANSFORMERS
    ════════════════════════════════════ */
@@ -299,6 +310,7 @@ function transformPanel(deal: RawDeal): SolarPanel {
     weight: formatWeight(deal.weight, deal.unit_panelWeight || "lb"),
     dims: formatDims(deal.length, deal.width, deal.height, deal.unit_length || "in"),
     datasheetUrl: extractDatasheetUrl(deal),
+    imageUrl: extractImageUrl(deal),
     qtyNum: deal.qoh?.panel ?? deal.totalQty ?? 0,
     wattageNum: wattage,
   };
@@ -332,6 +344,7 @@ function transformInverter(deal: RawDeal): Inverter {
     dims: formatDims(deal.length, deal.width, deal.height, deal.unit_length || "in"),
     features: extractFeatures(deal.product_description),
     datasheetUrl: extractDatasheetUrl(deal),
+    imageUrl: extractImageUrl(deal),
     qtyNum: deal.qoh?.quantity ?? deal.totalQty ?? 0,
     wattageNum: wattage,
   };
@@ -359,6 +372,7 @@ function transformStorage(deal: RawDeal): StorageItem {
     dims: formatDims(deal.length, deal.width, deal.height, deal.unit_length || "in"),
     features: extractFeatures(deal.product_description),
     datasheetUrl: extractDatasheetUrl(deal),
+    imageUrl: extractImageUrl(deal),
     qtyNum: deal.qoh?.quantity ?? deal.totalQty ?? 0,
     capacityNum: deal.total_capacity || 0,
   };
@@ -385,6 +399,7 @@ function transformGeneric(deal: RawDeal): GenericProduct {
     dims: formatDims(deal.length, deal.width, deal.height, deal.unit_length || "in"),
     features: extractFeatures(deal.product_description),
     datasheetUrl: extractDatasheetUrl(deal),
+    imageUrl: extractImageUrl(deal),
   };
 }
 

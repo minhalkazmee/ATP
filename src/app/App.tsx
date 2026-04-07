@@ -6,8 +6,20 @@ import { InventorySections } from "./components/InventorySections";
 import { FAQSection } from "./components/FAQSection";
 import { Footer } from "./components/Footer";
 import { fetchAllDeals, DealsData } from "./services/sunhubApi";
+import { trackEvent } from "./services/acTrack";
 
 const sectionIds = ["solar-panels", "inverters", "storage", "racking", "accessories", "diy", "components", "misc"];
+
+const categoryLabels: Record<string, string> = {
+  "solar-panels": "Solar Panels",
+  "inverters": "Inverters",
+  "storage": "Storage & Batteries",
+  "racking": "Racking & Mounts",
+  "accessories": "Solar Accessories",
+  "diy": "DIY & Smart Energy",
+  "components": "Components & Parts",
+  "misc": "EV Charging & Misc",
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("solar-panels");
@@ -46,6 +58,12 @@ export default function App() {
 
   useEffect(() => {
     loadData();
+    trackEvent('page_viewed', {
+      url: window.location.href,
+      referrer: document.referrer || 'direct',
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+    });
   }, [loadData]);
 
   const refs: Record<string, React.RefObject<HTMLElement | null>> = {
@@ -61,6 +79,11 @@ export default function App() {
 
   const handleTabClick = useCallback((id: string) => {
     setActiveTab(id);
+    trackEvent('category_viewed', {
+      category: id,
+      label: categoryLabels[id] ?? id,
+      timestamp: new Date().toISOString(),
+    });
     isClickScroll.current = true;
     const el = document.getElementById(id);
     if (el) {
