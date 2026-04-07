@@ -1,19 +1,30 @@
-// 1. Try ?email= URL param (from AC campaign links)
-const _urlEmail = new URLSearchParams(window.location.search).get('email');
+const _params = new URLSearchParams(window.location.search);
+
+// 1. ?email= param — manually added to AC campaign links
+const _urlEmail = _params.get('email');
 if (_urlEmail) {
   localStorage.setItem('ac_email', _urlEmail);
-} else if (!localStorage.getItem('ac_email')) {
-  // 2. Try reading AC site tracking cookie (__crmcontact) set when a contact
-  //    clicks any link from an AC email to a site-tracking-enabled domain
+}
+
+if (!localStorage.getItem('ac_email')) {
+  // 2. vgo_ee param — AC auto-appends this to email campaign links, base64-encoded email
+  const _vgoEe = _params.get('vgo_ee');
+  if (_vgoEe) {
+    try {
+      const decoded = atob(_vgoEe);
+      if (decoded.includes('@')) localStorage.setItem('ac_email', decoded);
+    } catch {}
+  }
+}
+
+if (!localStorage.getItem('ac_email')) {
+  // 3. __crmcontact cookie — set by AC when contact is identified on this domain
   const _acCookie = document.cookie.split(';').find(c => c.trim().startsWith('__crmcontact='));
   if (_acCookie) {
     const raw = decodeURIComponent(_acCookie.split('=').slice(1).join('='));
     let cookieEmail: string | null = null;
-    // Format 1: query string — email=xxx&hash=xxx
     try { cookieEmail = new URLSearchParams(raw).get('email'); } catch {}
-    // Format 2: plain JSON — {"email":"xxx"}
     if (!cookieEmail) try { cookieEmail = JSON.parse(raw).email ?? null; } catch {}
-    // Format 3: base64-encoded JSON
     if (!cookieEmail) try { cookieEmail = JSON.parse(atob(raw)).email ?? null; } catch {}
     if (cookieEmail) localStorage.setItem('ac_email', cookieEmail);
   }

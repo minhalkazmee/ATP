@@ -15,17 +15,17 @@ export default function handler(req: any, res: any) {
       .filter(Boolean) as [string, string][]
   );
 
-  const raw = cookies['__crmcontact'];
-  if (!raw) return res.status(200).json({ email: null });
-
+  // AC's diffuser.js sets prism_{actid} as the visitor UUID cookie.
+  // __crmcontact is set when the contact is identified from an email link.
+  // We can read __crmcontact server-side even if HttpOnly.
+  const crmRaw = cookies['__crmcontact'];
   let email: string | null = null;
 
-  // Format 1: query string — email=xxx&hash=xxx
-  try { email = new URLSearchParams(raw).get('email'); } catch {}
-  // Format 2: plain JSON — {"email":"xxx"}
-  if (!email) try { email = JSON.parse(raw)?.email || null; } catch {}
-  // Format 3: base64-encoded JSON
-  if (!email) try { email = JSON.parse(Buffer.from(raw, 'base64').toString())?.email || null; } catch {}
+  if (crmRaw) {
+    try { email = new URLSearchParams(crmRaw).get('email'); } catch {}
+    if (!email) try { email = JSON.parse(crmRaw)?.email || null; } catch {}
+    if (!email) try { email = JSON.parse(Buffer.from(crmRaw, 'base64').toString())?.email || null; } catch {}
+  }
 
   res.status(200).json({ email: email || null });
 }
