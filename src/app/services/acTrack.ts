@@ -1,8 +1,8 @@
 // 1. Try ?email= URL param (from AC campaign links)
 const _urlEmail = new URLSearchParams(window.location.search).get('email');
 if (_urlEmail) {
-  sessionStorage.setItem('ac_email', _urlEmail);
-} else if (!sessionStorage.getItem('ac_email')) {
+  localStorage.setItem('ac_email', _urlEmail);
+} else if (!localStorage.getItem('ac_email')) {
   // 2. Try reading AC site tracking cookie (__crmcontact) set when a contact
   //    clicks any link from an AC email to a site-tracking-enabled domain
   const _acCookie = document.cookie.split(';').find(c => c.trim().startsWith('__crmcontact='));
@@ -15,18 +15,18 @@ if (_urlEmail) {
     if (!cookieEmail) try { cookieEmail = JSON.parse(raw).email ?? null; } catch {}
     // Format 3: base64-encoded JSON
     if (!cookieEmail) try { cookieEmail = JSON.parse(atob(raw)).email ?? null; } catch {}
-    if (cookieEmail) sessionStorage.setItem('ac_email', cookieEmail);
+    if (cookieEmail) localStorage.setItem('ac_email', cookieEmail);
   }
 }
 
 // Expose a setter so the email capture bar can register a cold visitor's email
 export function setTrackedEmail(email: string) {
-  sessionStorage.setItem('ac_email', email);
+  localStorage.setItem('ac_email', email);
 }
 
 // inquiry_clicked only — fires event AND updates AC contact custom fields via proxy
 export async function trackInquiry(data: Record<string, unknown>): Promise<void> {
-  const email = sessionStorage.getItem('ac_email');
+  const email = localStorage.getItem('ac_email');
   if (!email) return;
   try {
     const resp = await fetch('/api/track', {
@@ -43,7 +43,7 @@ export async function trackInquiry(data: Record<string, unknown>): Promise<void>
 }
 
 export async function trackEvent(event: string, eventdata?: Record<string, unknown> | string): Promise<void> {
-  const email = sessionStorage.getItem('ac_email');
+  const email = localStorage.getItem('ac_email');
   if (!email) return;
 
   const actid = encodeURIComponent(import.meta.env.VITE_AC_ACTID);

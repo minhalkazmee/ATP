@@ -22,7 +22,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 function EmailCaptureBar() {
-  const [visible, setVisible] = useState(!sessionStorage.getItem('ac_email'));
+  const [visible, setVisible] = useState(!localStorage.getItem('ac_email'));
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
