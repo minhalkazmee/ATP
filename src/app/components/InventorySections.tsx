@@ -27,6 +27,7 @@ function panelPayload(r: SolarPanel) {
     part: r.partNum,
     name: r.title,
     url: r.productUrl,
+    timestamp: new Date().toISOString(),
     price: r.palletPrice,
     qty: r.moduleQty,
   };
@@ -40,6 +41,7 @@ function inverterPayload(r: Inverter) {
     part: r.partNum,
     name: r.title,
     url: r.productUrl,
+    timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
   };
@@ -53,6 +55,7 @@ function storagePayload(r: StorageItem) {
     part: r.partNum,
     name: r.title,
     url: r.productUrl,
+    timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
   };
@@ -66,6 +69,7 @@ function genericPayload(r: GenericProduct, categoryLabel: string) {
     part: r.partNum,
     name: r.title,
     url: r.productUrl,
+    timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
   };
