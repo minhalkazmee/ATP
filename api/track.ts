@@ -143,7 +143,7 @@ async function createZohoLead(
   ].filter(l => !l.endsWith(':     ')).join('\n');
 
   const lead: Record<string, unknown> = {
-    Last_Name:           contact.lastName  || contact.email,
+    Last_Name:           contact.lastName  || 'Unknown',
     First_Name:          contact.firstName || '',
     Email:               contact.email,
     Phone:               contact.phone     || '',
@@ -169,8 +169,12 @@ async function createZohoLead(
   );
 
   const zohoBody = await zohoResp.json();
-  console.log('[/api/track] Zoho status:', zohoResp.status, JSON.stringify(zohoBody));
-  console.log('[/api/track] lead payload sent:', JSON.stringify({ data: [lead] }));
+  const zohoResult = zohoBody?.data?.[0];
+  if (zohoResult?.status !== 'success') {
+    console.error('[/api/track] Zoho lead failed:', JSON.stringify(zohoResult));
+  } else {
+    console.log('[/api/track] Zoho lead created:', zohoResult?.details?.id);
+  }
 }
 
 export default async function handler(req: any, res: any) {
