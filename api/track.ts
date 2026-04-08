@@ -162,13 +162,14 @@ async function createZohoLead(
     'Content-Type': 'application/json',
   };
 
-  // Check if lead already exists by email
+  // Check if lead already exists by email (204 = no match, no body)
   const searchResp = await fetch(
     `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})`,
     { headers }
   );
-  const searchBody = await searchResp.json();
-  const existingId = searchBody?.data?.[0]?.id ?? null;
+  const existingId = searchResp.status === 200
+    ? ((await searchResp.json())?.data?.[0]?.id ?? null)
+    : null;
 
   let zohoResp: Response;
 
