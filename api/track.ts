@@ -134,21 +134,28 @@ async function createZohoLead(
     return;
   }
 
-  // 2. Create lead
-  const lead = {
-    Last_Name:    contact.lastName  || contact.email,
-    First_Name:   contact.firstName || '',
-    Email:        contact.email,
-    Phone:        contact.phone     || '',
-    Lead_Source:  'Sunhub ATP',
-    Description:  String(data.name  ?? ''),
-    // Custom fields — map to your Zoho field API names
-    SKU__c:          String(data.sku   ?? ''),
-    Product_URL__c:  String(data.url   ?? ''),
-    Inquiry_Price__c: String(data.price ?? ''),
-    Qty_Available__c: String(data.qty  ?? ''),
-    Inquiry_Time__c:  String(data.timestamp ?? new Date().toISOString()),
+  // 2. Build lead — mapped to actual Zoho field API names
+  const inquiryLines = [
+    `Product: ${String(data.name  ?? '')}`,
+    `SKU:     ${String(data.sku   ?? '')}`,
+    `Price:   ${String(data.price ?? '')}`,
+    `Qty:     ${String(data.qty   ?? '')}`,
+  ].filter(l => !l.endsWith(':     ')).join('\n');
+
+  const lead: Record<string, unknown> = {
+    Last_Name:       contact.lastName  || contact.email,
+    First_Name:      contact.firstName || '',
+    Email:           contact.email,
+    Phone:           contact.phone     || '',
+    Lead_Source:     'Sunhub ATP',
+    Description:     String(data.name ?? ''),
+    Website:         String(data.url  ?? ''),
+    How_Can_We_Help: inquiryLines,
+    First_Visit:     String(data.timestamp ?? new Date().toISOString()),
   };
+
+  // Drop empty fields
+  Object.keys(lead).forEach(k => { if (lead[k] === '' || lead[k] === 'undefined') delete lead[k]; });
 
   const zohoResp = await fetch(
     'https://www.zohoapis.com/crm/v6/Leads',
