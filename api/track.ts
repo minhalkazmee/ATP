@@ -38,11 +38,11 @@ async function updateContactFields(email: string, data: Record<string, unknown>)
     LASTSKU:       String(data.sku   ?? ''),
     LASTBRAND:     String(data.brand ?? ''),
     LASTPART:      String(data.part  ?? ''),
+    LASTPRODUCTNAME: String(data.name ?? ''),
     LASTCATEGORY:  String(data.cat   ?? ''),
     LASTPRICE:     String(data.price ?? ''),
     LASTQTY:       String(data.qty   ?? ''),
     LASTAVAIL:     String(data.avail ?? ''),
-    LASTSPEC:      String(data.wp ?? data.power ?? data.capacity ?? ''),
     LASTIMAGEURL:  String(data.img   ?? ''),
   };
 
