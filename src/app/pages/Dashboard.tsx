@@ -55,6 +55,229 @@ function fmtN(n: number) { return n.toLocaleString('en-US'); }
 function shortDate(iso: string) { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()}`; }
 function clip(s: string, max = 26) { return s.length > max ? s.slice(0, max) + '…' : s; }
 
+// ─── Detail Drawer ────────────────────────────────────────────────────────────
+
+type DrawerPayload =
+  | { type: 'product_inquiries'; sku: string; name: string }
+  | { type: 'product_expands';   sku: string; name: string }
+  | { type: 'lead';   data: DashData['recentLeads'][0] }
+  | { type: 'deal';   data: Deal };
+
+function fmtDatetime(iso?: string) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function fmtDateOnly(iso?: string) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function DetailDrawer({
+  payload, pin, dateFrom, dateTo, onClose,
+}: {
+  payload: DrawerPayload | null;
+  pin: string;
+  dateFrom: string;
+  dateTo: string;
+  onClose: () => void;
+}) {
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!payload) return;
+    setDetail(null);
+    if (payload.type === 'product_inquiries' || payload.type === 'product_expands') {
+      setLoading(true);
+      fetch(`/api/detail?pin=${encodeURIComponent(pin)}&type=${payload.type}&sku=${encodeURIComponent(payload.sku)}&from=${dateFrom}&to=${dateTo}`)
+        .then(r => r.json())
+        .then(setDetail)
+        .catch(() => setDetail({ error: 'Failed to load' }))
+        .finally(() => setLoading(false));
+    }
+  }, [payload, pin, dateFrom, dateTo]);
+
+  if (!payload) return null;
+
+  const thS: React.CSSProperties = {
+    padding: '6px 12px', color: SLATE, fontWeight: 700, fontSize: '0.65rem',
+    textTransform: 'uppercase', letterSpacing: '0.4px',
+    borderBottom: '2px solid #E5E7EB', textAlign: 'left', whiteSpace: 'nowrap',
+  };
+  const tdS: React.CSSProperties = {
+    padding: '9px 12px', borderBottom: '1px solid #F3F4F6',
+    fontSize: '0.8rem', color: NAVY, fontFamily: 'Inter, sans-serif',
+  };
+
+  function Field({ label, value, green }: { label: string; value: React.ReactNode; green?: boolean }) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: SLATE, textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0, marginRight: 16 }}>{label}</span>
+        <span style={{ fontSize: '0.83rem', color: green ? '#16A34A' : NAVY, fontWeight: green ? 700 : 400, textAlign: 'right', wordBreak: 'break-all' }}>{value || '-'}</span>
+      </div>
+    );
+  }
+
+  function title() {
+    if (payload.type === 'product_inquiries') return `Inquiries: ${payload.name}`;
+    if (payload.type === 'product_expands')   return `Expansions: ${payload.name}`;
+    if (payload.type === 'lead')  return payload.data.name || payload.data.email || 'Lead';
+    if (payload.type === 'deal')  return payload.data.dealName || 'Deal';
+    return '';
+  }
+
+  function badge(label: string) {
+    return (
+      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.68rem', fontWeight: 700, background: '#EBF3FF', color: NAVY }}>
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(11,37,69,0.25)', zIndex: 200, backdropFilter: 'blur(2px)' }} />
+
+      {/* Drawer */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 201,
+        width: '100%', maxWidth: 560,
+        background: '#fff', boxShadow: '-8px 0 40px rgba(0,0,0,0.12)',
+        display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif',
+      }}>
+        {/* Header */}
+        <div style={{ background: '#EBF3FF', borderBottom: '1px solid #E5E7EB', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 700, color: SLATE, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>
+              {payload.type === 'product_inquiries' ? 'Product Inquiries' :
+               payload.type === 'product_expands'   ? 'Product Expansions' :
+               payload.type === 'lead' ? 'Zoho Lead' : 'Zoho Deal'}
+            </p>
+            <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: NAVY, letterSpacing: '-0.2px' }}>{title()}</p>
+          </div>
+          <button onClick={onClose} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: '0.85rem', color: SLATE, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+
+          {/* ── Product Inquiries ── */}
+          {payload.type === 'product_inquiries' && (
+            loading ? <p style={{ color: SLATE, fontSize: '0.83rem' }}>Loading…</p> :
+            detail?.error ? <p style={{ color: '#EF4444', fontSize: '0.83rem' }}>{detail.error}</p> :
+            detail?.inquiries?.length === 0 ? <p style={{ color: '#D1D5DB', fontSize: '0.83rem' }}>No inquiries in this range</p> :
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Email', 'Qty', 'Lead Value', 'Date'].map(h => (
+                    <th key={h} style={{ ...thS, textAlign: h === 'Lead Value' || h === 'Qty' ? 'right' : 'left' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(detail?.inquiries ?? []).map((r: any, i: number) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                    <td style={tdS}>{r.email || '-'}</td>
+                    <td style={{ ...tdS, textAlign: 'right' }}>{r.qty || '-'}</td>
+                    <td style={{ ...tdS, textAlign: 'right', color: r.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: r.leadValue > 0 ? 700 : 400 }}>
+                      {r.leadValue > 0 ? fmt$(r.leadValue) : '-'}
+                    </td>
+                    <td style={{ ...tdS, color: SLATE, fontSize: '0.75rem' }}>{fmtDatetime(r.date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* ── Product Expansions ── */}
+          {payload.type === 'product_expands' && (
+            loading ? <p style={{ color: SLATE, fontSize: '0.83rem' }}>Loading…</p> :
+            detail?.error ? <p style={{ color: '#EF4444', fontSize: '0.83rem' }}>{detail.error}</p> :
+            detail?.expands?.length === 0 ? <p style={{ color: '#D1D5DB', fontSize: '0.83rem' }}>No expansions in this range</p> :
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Email', 'Session', 'Date'].map(h => <th key={h} style={thS}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {(detail?.expands ?? []).map((r: any, i: number) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                    <td style={tdS}>{r.email || <span style={{ color: '#D1D5DB' }}>Unknown</span>}</td>
+                    <td style={{ ...tdS, color: SLATE, fontFamily: 'monospace', fontSize: '0.72rem' }}>{r.sessionId?.slice(0, 8)}…</td>
+                    <td style={{ ...tdS, color: SLATE, fontSize: '0.75rem' }}>{fmtDatetime(r.date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* ── Lead Detail ── */}
+          {payload.type === 'lead' && (() => {
+            const l = payload.data;
+            return (
+              <div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+                  <span style={{
+                    padding: '3px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700,
+                    background: l.status === 'Converted' ? '#DCFCE7' : l.status === 'Lost' ? '#FEF2F2' : '#FFF7ED',
+                    color: l.status === 'Converted' ? '#16A34A' : l.status === 'Lost' ? '#DC2626' : ORANGE,
+                  }}>{l.status || 'New'}</span>
+                  {l.leadValue > 0 && <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: '#DCFCE7', color: '#16A34A' }}>{fmt$(l.leadValue)}</span>}
+                </div>
+                <Field label="Name"       value={l.name} />
+                <Field label="Email"      value={l.email} />
+                <Field label="Company"    value={l.company} />
+                <Field label="Product"    value={l.product} />
+                <Field label="Lead Value" value={l.leadValue > 0 ? fmt$(l.leadValue) : null} green />
+                <Field label="Status"     value={l.status} />
+                <Field label="Created"    value={fmtDateOnly(l.createdAt)} />
+              </div>
+            );
+          })()}
+
+          {/* ── Deal Detail ── */}
+          {payload.type === 'deal' && (() => {
+            const d = payload.data;
+            const isWon = d.stage === 'Closed Won';
+            return (
+              <div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+                  <span style={{
+                    padding: '3px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700,
+                    background: isWon ? '#DCFCE7' : 'rgba(255,107,0,0.1)',
+                    color: isWon ? '#16A34A' : ORANGE,
+                  }}>{d.stage || 'Open'}</span>
+                  {d.amount > 0 && <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: isWon ? '#DCFCE7' : '#EBF3FF', color: isWon ? '#16A34A' : NAVY }}>{fmt$(d.amount)}</span>}
+                </div>
+                <Field label="Deal Name"  value={d.dealName} />
+                <Field label="Amount"     value={d.amount > 0 ? fmt$(d.amount) : null} green={isWon} />
+                <Field label="Stage"      value={d.stage} />
+                <Field label="Account"    value={d.accountName} />
+                <Field label="Contact"    value={d.contactName} />
+                <Field label="Product"    value={d.product} />
+                <Field label={isWon ? 'Closed Date' : 'Expected Close'} value={fmtDateOnly(d.closingDate)} />
+              </div>
+            );
+          })()}
+
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Row hover style helper ────────────────────────────────────────────────────
+
+function clickableRow(i: number): React.CSSProperties {
+  return {
+    background: i % 2 === 0 ? '#fff' : '#FAFAFA',
+    cursor: 'pointer',
+    transition: 'background 0.12s',
+  };
+}
+
 // ─── PIN Gate ─────────────────────────────────────────────────────────────────
 
 function PinGate({ onAuth }: { onAuth: (pin: string) => void }) {
@@ -181,6 +404,7 @@ export default function Dashboard() {
   const [error, setError]   = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
+  const [drawer, setDrawer]   = useState<DrawerPayload | null>(null);
 
   // Close picker on outside click
   useEffect(() => {
@@ -505,7 +729,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {data.topInquired.map((p, i) => (
-                      <tr key={p.sku} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                      <tr key={p.sku} style={clickableRow(i)} onClick={() => setDrawer({ type: 'product_inquiries', sku: p.sku, name: p.name })}>
                         <td style={{ ...tdStyle, color: '#D1D5DB', width: 32 }}>{i + 1}</td>
                         <td style={tdStyle} title={p.name}>{clip(p.name, 36)}</td>
                         <td style={{ ...tdStyle, color: SLATE, fontFamily: 'monospace', fontSize: '0.73rem' }}>{p.sku}</td>
@@ -543,7 +767,7 @@ export default function Dashboard() {
                     </thead>
                     <tbody>
                       {data.topExpanded.map((p, i) => (
-                        <tr key={p.sku} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                        <tr key={p.sku} style={clickableRow(i)} onClick={() => setDrawer({ type: 'product_expands', sku: p.sku, name: p.name })}>
                           <td style={{ ...tdStyle, color: '#D1D5DB', width: 32 }}>{i + 1}</td>
                           <td style={tdStyle} title={p.name}>{clip(p.name, 36)}</td>
                           <td style={{ ...tdStyle, color: SLATE, fontFamily: 'monospace', fontSize: '0.73rem' }}>{p.sku}</td>
@@ -645,7 +869,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {data.recentDeals.map((d, i) => (
-                      <tr key={d.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                      <tr key={d.zohoId} style={clickableRow(i)} onClick={() => setDrawer({ type: 'deal', data: d })}>
                         <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '-'}</span></td>
                         <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '-'}</td>
                         <td style={{ ...tdStyle }} title={d.product}>{clip(d.product || '-', 24)}</td>
@@ -680,7 +904,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {data.pipelineDeals.map((d, i) => (
-                      <tr key={d.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                      <tr key={d.zohoId} style={clickableRow(i)} onClick={() => setDrawer({ type: 'deal', data: d })}>
                         <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '-'}</span></td>
                         <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '-'}</td>
                         <td style={{ ...tdStyle }}>
@@ -732,7 +956,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {data.recentLeads.map((l, i) => (
-                      <tr key={l.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                      <tr key={l.zohoId} style={clickableRow(i)} onClick={() => setDrawer({ type: 'lead', data: l })}>
                         <td style={tdStyle}>
                           <p style={{ margin: 0, fontWeight: 600 }}>{l.name || '-'}</p>
                           <p style={{ margin: '1px 0 0', color: SLATE, fontSize: '0.73rem' }}>{l.email}</p>
@@ -766,6 +990,15 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* Detail Drawer */}
+      <DetailDrawer
+        payload={drawer}
+        pin={pin}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onClose={() => setDrawer(null)}
+      />
     </div>
   );
 }
