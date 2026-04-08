@@ -453,7 +453,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
         <table className="w-full md:min-w-[1200px]">
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filtered.length}</th>
+              <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number<span style={thSub}>Click to view datasheet</span></th>
               <th style={thStyle} className={H}>Cell Type</th>
@@ -521,6 +521,9 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
           </tbody>
         </table>
       </div>
+      <p style={{ fontFamily: font, fontSize: '0.75rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0 }}>
+        {filtered.length} products in this category{filtered.length !== data.length ? ' (Filtered)' : ''}
+      </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="panels" />
 
       {!prefs?.focusMode && (
@@ -583,7 +586,7 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
         <table className="w-full md:min-w-[1000px]">
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filtered.length}</th>
+              <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Type</th>
@@ -645,6 +648,9 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
           </tbody>
         </table>
       </div>
+      <p style={{ fontFamily: font, fontSize: '0.75rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0 }}>
+        {filtered.length} products in this category{filtered.length !== data.length ? ' (Filtered)' : ''}
+      </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="inverters" />
     </Section>
   );
@@ -692,7 +698,7 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
         <table className="w-full md:min-w-[1000px]">
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filtered.length}</th>
+              <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Chemistry</th>
@@ -750,6 +756,9 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
           </tbody>
         </table>
       </div>
+      <p style={{ fontFamily: font, fontSize: '0.75rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0 }}>
+        {filtered.length} products in this category{filtered.length !== data.length ? ' (Filtered)' : ''}
+      </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="items" />
     </Section>
   );
@@ -790,7 +799,7 @@ function GenericProductSection({
           <table className="w-full md:min-w-[1000px]">
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filteredData.length}</th>
+                <th style={{ ...thStyle, width: 30 }}></th>
                 <th style={thStyle}>Manufacturer</th>
                 <th style={thStyle} className={H}>Part Number</th>
                 <th style={thStyle} className={H}>Category</th>
@@ -840,6 +849,9 @@ function GenericProductSection({
           </table>
         </div>
       )}
+      <p style={{ fontFamily: font, fontSize: '0.75rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0 }}>
+        {filteredData.length} products in this category{filteredData.length !== data.length ? ' (Filtered)' : ''}
+      </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="items" />
     </Section>
   );
