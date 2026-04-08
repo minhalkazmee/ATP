@@ -140,7 +140,8 @@ async function createZohoLead(
     `SKU:     ${String(data.sku   ?? '')}`,
     `Price:   ${String(data.price ?? '')}`,
     `Qty:     ${String(data.qty   ?? '')}`,
-  ].filter(l => !l.endsWith(':     ')).join('\n');
+    data.message ? `\nMessage: ${String(data.message)}` : '',
+  ].filter(Boolean).join('\n');
 
   const lead: Record<string, unknown> = {
     Last_Name:           contact.lastName  || 'Unknown',
@@ -212,16 +213,36 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { email, data } = req.body ?? {};
+  const { email, data, contactInfo } = req.body ?? {};
   if (!email || !data) return res.status(400).json({ error: 'Missing email or data' });
 
   try {
-    const contact = await resolveContact(email);
+    // Merge form-submitted contact info with whatever AC has
+    const acContact = await resolveContact(email);
+    const contact: ContactProfile = {
+      ...acContact,
+      firstName: contactInfo?.firstName || acContact.firstName,
+      lastName:  contactInfo?.lastName  || acContact.lastName,
+      phone:     contactInfo?.phone     || acContact.phone,
+    };
+
+    // If form provided name/phone, push them back to AC
+    if (contactInfo?.firstName || contactInfo?.lastName || contactInfo?.phone) {
+      const patch: Record<string, string> = {};
+      if (contactInfo.firstName) patch.firstName = contactInfo.firstName;
+      if (contactInfo.lastName)  patch.lastName  = contactInfo.lastName;
+      if (contactInfo.phone)     patch.phone     = contactInfo.phone;
+      fetch(`${process.env.AC_API_URL}/api/3/contacts/${contact.id}`, {
+        method: 'PUT',
+        headers: { 'Api-Token': process.env.AC_API_KEY!, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contact: patch }),
+      }).catch(() => {});
+    }
 
     await Promise.all([
       fireEvent(email, data),
       updateContactFields(contact, data),
-      createZohoLead(contact, data),
+      createZohoLead(contact, { ...data, message: contactInfo?.message }),
     ]);
 
     res.status(200).json({ ok: true });

@@ -1,4 +1,5 @@
-import { forwardRef, useState, useMemo, useEffect } from "react";
+import { forwardRef, useState, useMemo, useEffect, useCallback } from "react";
+import { InquireModal } from "./InquireModal";
 import { trackEvent, trackInquiry } from "../services/acTrack";
 import { Plus, Minus, ArrowUpDown, Loader2, ChevronDown } from "lucide-react";
 import { AvailabilityBadge } from "./AvailabilityBadge";
@@ -158,29 +159,34 @@ function ClearFiltersBtn({ onClick }: { onClick: () => void }) {
 }
 
 function InquireBtn({ partNum, trackingData }: { partNum: string; trackingData?: Record<string, unknown> }) {
-  const subject = encodeURIComponent(`Inquiry for SKU: ${partNum}`);
-  const body = encodeURIComponent(`Hello Sunhub Sales Team,\n\nI am interested in the following product:\n\nPart Number: ${partNum}\n\nPlease provide more information regarding pricing and availability.\n\nThank you!`);
-  const mailto = `mailto:sales@sunhub.com?subject=${subject}&body=${body}`;
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
 
   return (
-    <a
-      href={mailto}
-      onClick={() => trackInquiry(trackingData ?? { partNum })}
-      className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
-      style={{
-        background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
-        color: "#fff",
-        fontFamily: font,
-        fontWeight: 700,
-        fontSize: "0.8rem",
-        boxShadow: "0 2px 6px rgba(255, 107, 0, 0.12)",
-      }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
-      </svg>
-      Inquire Now
-    </a>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
+        style={{
+          background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
+          color: "#fff",
+          fontFamily: font,
+          fontWeight: 700,
+          fontSize: "0.8rem",
+          border: "none",
+          cursor: "pointer",
+          boxShadow: "0 2px 6px rgba(255, 107, 0, 0.12)",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
+        </svg>
+        Inquire Now
+      </button>
+      {open && (
+        <InquireModal trackingData={trackingData ?? { partNum }} onClose={close} />
+      )}
+    </>
   );
 }
 

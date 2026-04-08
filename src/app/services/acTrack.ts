@@ -46,15 +46,34 @@ export function setTrackedEmail(email: string) {
   localStorage.setItem('ac_email', email);
 }
 
+// Fire-and-forget: adds contact to AC as soon as email is captured (even on drop-off)
+export function captureEmail(email: string): void {
+  fetch('/api/capture', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  }).catch(() => {});
+}
+
 // inquiry_clicked only — fires event AND updates AC contact custom fields via proxy
-export async function trackInquiry(data: Record<string, unknown>): Promise<void> {
+export interface ContactInfo {
+  firstName?: string;
+  lastName?:  string;
+  phone?:     string;
+  message?:   string;
+}
+
+export async function trackInquiry(
+  data: Record<string, unknown>,
+  contactInfo?: ContactInfo,
+): Promise<void> {
   const email = localStorage.getItem('ac_email');
   if (!email) return;
   try {
     const resp = await fetch('/api/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, data }),
+      body: JSON.stringify({ email, data, contactInfo }),
     });
     if (resp.ok) return;
     throw new Error(`proxy ${resp.status}`);
