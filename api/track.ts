@@ -147,7 +147,7 @@ async function createZohoLead(
     First_Name:      contact.firstName || '',
     Email:           contact.email,
     Phone:           contact.phone     || '',
-    Lead_Source:     'Sunhub ATP',
+    Lead_Source:     'SunhubATP.com',
     Description:     String(data.name ?? ''),
     Website:         String(data.url  ?? ''),
     How_Can_We_Help: inquiryLines,
