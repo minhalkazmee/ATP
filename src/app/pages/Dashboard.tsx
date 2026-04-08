@@ -220,16 +220,20 @@ export default function Dashboard() {
     load(p, toDateStr(range.from ?? daysAgo(30)), toDateStr(range.to ?? new Date()));
   }
 
-  // Load when range has both dates selected
+  // Only load on initial pin auth — Apply button / presets trigger explicit loads
+  const initialLoad = useRef(false);
   useEffect(() => {
-    if (pin && range.from && range.to) {
-      load(pin, toDateStr(range.from), toDateStr(range.to));
+    if (pin && !initialLoad.current) {
+      initialLoad.current = true;
+      load(pin, toDateStr(range.from ?? daysAgo(30)), toDateStr(range.to ?? new Date()));
     }
-  }, [pin, range.from, range.to, load]);
+  }, [pin, load]);
 
   function applyPreset(days: number) {
-    setRange({ from: daysAgo(days), to: new Date() });
+    const r = { from: daysAgo(days), to: new Date() };
+    setRange(r);
     setPickerOpen(false);
+    if (pin) load(pin, toDateStr(r.from), toDateStr(r.to));
   }
 
   const dateFrom = range.from ? toDateStr(range.from) : '';
@@ -320,12 +324,7 @@ export default function Dashboard() {
                 <DayPicker
                   mode="range"
                   selected={range}
-                  onSelect={(r) => {
-                    if (r) {
-                      setRange(r);
-                      if (r.from && r.to) setPickerOpen(false);
-                    }
-                  }}
+                  onSelect={(r) => { if (r) setRange(r); }}
                   numberOfMonths={2}
                   styles={{
                     root: { fontFamily: 'Inter, sans-serif', fontSize: '0.82rem', margin: 0 },
@@ -336,6 +335,28 @@ export default function Dashboard() {
                     today: { fontWeight: 700, color: ORANGE },
                   }}
                 />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 4px 4px', borderTop: '1px solid #F3F4F6' }}>
+                  <button onClick={() => setPickerOpen(false)} style={{
+                    marginRight: 8, padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+                    border: '1px solid #E5E7EB', background: '#fff',
+                    fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', color: SLATE,
+                  }}>Cancel</button>
+                  <button
+                    disabled={!range.from || !range.to}
+                    onClick={() => {
+                      if (range.from && range.to) {
+                        setPickerOpen(false);
+                        if (pin) load(pin, toDateStr(range.from), toDateStr(range.to));
+                      }
+                    }}
+                    style={{
+                      padding: '6px 18px', borderRadius: 8, cursor: range.from && range.to ? 'pointer' : 'not-allowed',
+                      border: 'none', background: range.from && range.to ? 'linear-gradient(135deg,#FF6B00,#FF8533)' : '#F1F5F9',
+                      fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', fontWeight: 700,
+                      color: range.from && range.to ? '#fff' : '#94A3B8',
+                      boxShadow: range.from && range.to ? '0 2px 8px rgba(255,107,0,0.22)' : 'none',
+                    }}>Apply</button>
+                </div>
               </div>
             )}
           </div>
