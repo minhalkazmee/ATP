@@ -160,6 +160,8 @@ async function createZohoLead(
     data.message ? `\nMessage: ${String(data.message)}` : '',
   ].filter(Boolean).join('\n');
 
+  const leadValueNum = rQty > 0 && uPrice > 0 ? parseFloat((rQty * uPrice).toFixed(2)) : null;
+
   const lead: Record<string, unknown> = {
     Last_Name:           contact.lastName  || 'Unknown',
     First_Name:          contact.firstName || '',
@@ -169,6 +171,7 @@ async function createZohoLead(
     Inquired_Product:    inquiryLines,
     Inquired_Product_URL: String(data.url ?? ''),
     First_Visit:         String(data.timestamp ?? new Date().toISOString()),
+    ...(leadValueNum !== null && { Lead_Value: leadValueNum }),
   };
 
   // Drop empty fields
@@ -201,6 +204,7 @@ async function createZohoLead(
           Inquired_Product:     lead.Inquired_Product,
           Inquired_Product_URL: lead.Inquired_Product_URL,
           First_Visit:          lead.First_Visit,
+          ...(leadValueNum !== null && { Lead_Value: leadValueNum }),
         }],
       }),
     });
