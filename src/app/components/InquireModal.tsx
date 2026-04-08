@@ -53,10 +53,12 @@ export function InquireModal({ trackingData, onClose }: Props) {
   const [form, setForm] = useState({
     email:   knownEmail || '',
     message: '',
-    phone:   localStorage.getItem('ac_phone') || '',
-    company: '',
-    state:   '',
-    zip:     '',
+    firstName: localStorage.getItem('ac_first_name') || '',
+    lastName:  '',
+    phone:     localStorage.getItem('ac_phone') || '',
+    company:   '',
+    state:     '',
+    zip:       '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -78,12 +80,15 @@ export function InquireModal({ trackingData, onClose }: Props) {
     setLoading(true);
     try {
       await trackInquiry(trackingData, {
-        phone:   form.phone,
-        company: form.company,
-        state:   form.state,
-        zip:     form.zip,
-        message: form.message,
+        firstName: form.firstName,
+        lastName:  form.lastName,
+        phone:     form.phone,
+        company:   form.company,
+        state:     form.state,
+        zip:       form.zip,
+        message:   form.message,
       } as any);
+      if (form.firstName) localStorage.setItem('ac_first_name', form.firstName);
       if (form.phone) localStorage.setItem('ac_phone', form.phone);
     } catch {}
     setStep('thanks');
@@ -247,18 +252,37 @@ export function InquireModal({ trackingData, onClose }: Props) {
             <form onSubmit={handleDetails}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                 <h2 style={{ margin: 0, color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                  A bit more about you
+                  Almost there
                 </h2>
                 <span style={{
-                  background: '#FFF4EB', color: '#FF6B00', border: '1px solid #FFD6B8',
+                  background: '#F1F5F9', color: '#64748B', border: '1px solid #E2E8F0',
                   fontFamily: 'Inter, sans-serif', fontSize: '0.68rem', fontWeight: 700,
                   padding: '2px 8px', borderRadius: 20, letterSpacing: '0.5px',
                   textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 3,
-                }}>Optional</span>
+                }}>Step 3 of 3</span>
               </div>
               <p style={{ margin: '0 0 18px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
-                Helps the seller prioritize your inquiry.
+                Name is required. Phone, company and location are optional.
               </p>
+
+              <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={label}>First name</label>
+                  <input
+                    placeholder="Jane" required autoFocus
+                    value={form.firstName} onChange={set('firstName')}
+                    style={inp}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={label}>Last name</label>
+                  <input
+                    placeholder="Smith" required
+                    value={form.lastName} onChange={set('lastName')}
+                    style={inp}
+                  />
+                </div>
+              </div>
 
               <label style={label}>Phone</label>
               <input
