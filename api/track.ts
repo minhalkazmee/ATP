@@ -32,7 +32,6 @@ async function fireEvent(email: string, data: Record<string, unknown>) {
 
 async function updateContactFields(email: string, data: Record<string, unknown>) {
   const fieldIds = await getFieldIds();
-  console.log('[/api/track] available perstags:', Object.keys(fieldIds));
 
   // AC strips underscores from perstags: LAST_SKU → LASTSKU
   const toUpdate: Record<string, string> = {
@@ -43,7 +42,6 @@ async function updateContactFields(email: string, data: Record<string, unknown>)
     LASTPRICE:     String(data.price ?? ''),
     LASTQTY:       String(data.qty   ?? ''),
     LASTAVAIL:     String(data.avail ?? ''),
-    // Key spec: panels use wp, inverters use power, storage uses capacity
     LASTSPEC:      String(data.wp ?? data.power ?? data.capacity ?? ''),
     LASTIMAGEURL:  String(data.img   ?? ''),
   };
@@ -52,26 +50,44 @@ async function updateContactFields(email: string, data: Record<string, unknown>)
     .filter(([perstag, value]) => fieldIds[perstag] != null && value !== '')
     .map(([perstag, value]) => ({ field: String(fieldIds[perstag]), value }));
 
-  console.log('[/api/track] fieldValues to write:', fieldValues.length, JSON.stringify(fieldValues));
+  if (fieldValues.length === 0) return;
 
-  if (fieldValues.length === 0) {
-    console.warn('[/api/track] No matching fields found — have you created the custom fields in AC with the correct perstags?');
+  // Look up existing contact ID — contacts/sync rejects existing emails as duplicate
+  const searchResp = await fetch(
+    `${process.env.AC_API_URL}/api/3/contacts?email=${encodeURIComponent(email)}`,
+    { headers: { 'Api-Token': process.env.AC_API_KEY! } }
+  );
+  const { contacts } = await searchResp.json();
+
+  let contactId: string | null = contacts?.[0]?.id ?? null;
+
+  if (!contactId) {
+    // Contact doesn't exist yet — create it
+    const createResp = await fetch(`${process.env.AC_API_URL}/api/3/contacts`, {
+      method: 'POST',
+      headers: { 'Api-Token': process.env.AC_API_KEY!, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact: { email } }),
+    });
+    const created = await createResp.json();
+    contactId = created?.contact?.id ?? null;
+  }
+
+  if (!contactId) {
+    console.error('[/api/track] could not resolve contact ID for', email);
     return;
   }
 
-  const syncResp = await fetch(`${process.env.AC_API_URL}/api/3/contacts/sync`, {
-    method: 'POST',
-    headers: {
-      'Api-Token': process.env.AC_API_KEY!,
-      'Content-Type': 'application/json',
-    },
+  const updateResp = await fetch(`${process.env.AC_API_URL}/api/3/contacts/${contactId}`, {
+    method: 'PUT',
+    headers: { 'Api-Token': process.env.AC_API_KEY!, 'Content-Type': 'application/json' },
     body: JSON.stringify({ contact: { email, fieldValues } }),
   });
-  const syncBody = await syncResp.json();
-  if (!syncResp.ok) {
-    console.error('[/api/track] contacts/sync failed:', syncResp.status, JSON.stringify(syncBody));
+
+  if (!updateResp.ok) {
+    const body = await updateResp.json();
+    console.error('[/api/track] contact update failed:', updateResp.status, JSON.stringify(body));
   } else {
-    console.log('[/api/track] contacts/sync OK');
+    console.log('[/api/track] contact fields updated OK');
   }
 }
 
