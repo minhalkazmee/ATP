@@ -161,9 +161,19 @@ function ChartTip({ active, payload, label }: any) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
+function toDateStr(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+function daysAgoStr(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return toDateStr(d);
+}
+
 export default function Dashboard() {
   const [pin, setPin]         = useState<string | null>(null);
-  const [range, setRange]     = useState('30');
+  const [dateFrom, setDateFrom] = useState(() => daysAgoStr(30));
+  const [dateTo, setDateTo]     = useState(() => toDateStr(new Date()));
   const [data, setData]       = useState<DashData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -180,10 +190,10 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
-  const load = useCallback(async (p: string, r: string) => {
+  const load = useCallback(async (p: string, from: string, to: string) => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`/api/dashboard?pin=${encodeURIComponent(p)}&range=${r}`);
+      const res = await fetch(`/api/dashboard?pin=${encodeURIComponent(p)}&from=${from}&to=${to}`);
       if (res.status === 401) { setPin(null); localStorage.removeItem(PIN_KEY); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
@@ -193,10 +203,15 @@ export default function Dashboard() {
 
   function handleAuth(p: string) {
     localStorage.setItem(PIN_KEY, JSON.stringify({ p, ts: Date.now() }));
-    setPin(p); load(p, range);
+    setPin(p); load(p, dateFrom, dateTo);
   }
 
-  useEffect(() => { if (pin) load(pin, range); }, [pin, range, load]);
+  useEffect(() => { if (pin) load(pin, dateFrom, dateTo); }, [pin, dateFrom, dateTo, load]);
+
+  function applyPreset(days: number) {
+    setDateFrom(daysAgoStr(days));
+    setDateTo(toDateStr(new Date()));
+  }
 
   async function syncZoho() {
     if (!pin) return;
@@ -205,7 +220,7 @@ export default function Dashboard() {
       const res = await fetch('/api/zoho-sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
       const j = await res.json();
       setSyncMsg(j.ok ? `✓ ${j.leads} leads, ${j.deals} deals` : `Error: ${j.error}`);
-      if (j.ok) await load(pin, range);
+      if (j.ok) await load(pin, dateFrom, dateTo);
     } catch (e: any) { setSyncMsg(`Error: ${e.message}`); }
     finally { setSyncing(false); setTimeout(() => setSyncMsg(''), 4000); }
   }
@@ -242,17 +257,22 @@ export default function Dashboard() {
 
         {/* Right: controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Range pills */}
-          {(['7', '30', '90'] as const).map(r => (
-            <button key={r} onClick={() => setRange(r)} style={{
-              padding: '5px 14px', borderRadius: 20, cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', fontWeight: 600,
-              border: range === r ? 'none' : '1px solid #E5E7EB',
-              background: range === r ? 'linear-gradient(135deg,#FF6B00,#FF8533)' : '#fff',
-              color: range === r ? '#fff' : SLATE,
-              boxShadow: range === r ? '0 2px 8px rgba(255,107,0,0.2)' : 'none',
-            }}>{r}d</button>
+          {/* Preset pills */}
+          {[{ label: '7d', days: 7 }, { label: '30d', days: 30 }, { label: '90d', days: 90 }, { label: 'All', days: 3650 }].map(({ label, days }) => (
+            <button key={label} onClick={() => applyPreset(days)} style={{
+              padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif', fontSize: '0.75rem', fontWeight: 600,
+              border: '1px solid #E5E7EB', background: '#fff', color: SLATE,
+            }}>{label}</button>
           ))}
+          {/* Date range inputs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '3px 10px' }}>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ border: 'none', background: 'transparent', fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', color: NAVY, outline: 'none', cursor: 'pointer' }} />
+            <span style={{ color: '#D1D5DB', fontSize: '0.75rem' }}>to</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ border: 'none', background: 'transparent', fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', color: NAVY, outline: 'none', cursor: 'pointer' }} />
+          </div>
 
           {/* Sync Zoho */}
           <button onClick={syncZoho} disabled={syncing} style={{
@@ -300,15 +320,15 @@ export default function Dashboard() {
               <h1 style={{ margin: 0, color: NAVY, fontWeight: 700, fontSize: '1.3rem', letterSpacing: '-0.3px' }}>
                 Site Insights
               </h1>
-              <p style={{ margin: '4px 0 0', color: SLATE, fontSize: '0.82rem' }}>Last {range} days · {fmtN(data.kpis.events)} events from {fmtN(data.kpis.sessions)} sessions</p>
+              <p style={{ margin: '4px 0 0', color: SLATE, fontSize: '0.82rem' }}>{dateFrom} to {dateTo} · {fmtN(data.kpis.events)} events from {fmtN(data.kpis.sessions)} sessions</p>
             </div>
 
             {/* ── Traffic KPIs ── */}
             <p style={{ margin: '0 0 8px', color: SLATE, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Traffic & Leads</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-              <KpiCard label="Sessions"         value={fmtN(data.kpis.sessions)}           sub={`last ${range}d`} />
-              <KpiCard label="Events"           value={fmtN(data.kpis.events)}             sub={`last ${range}d`} />
-              <KpiCard label="Inquiries"        value={fmtN(data.kpis.inquiries)}          sub={`last ${range}d`} />
+              <KpiCard label="Sessions"         value={fmtN(data.kpis.sessions)}           sub={`${dateFrom} to ${dateTo}`} />
+              <KpiCard label="Events"           value={fmtN(data.kpis.events)}             sub={`${dateFrom} to ${dateTo}`} />
+              <KpiCard label="Inquiries"        value={fmtN(data.kpis.inquiries)}          sub={`${dateFrom} to ${dateTo}`} />
               <KpiCard label="Total Lead Value" value={fmt$(data.kpis.totalLeadValue)}     sub="from inquiries w/ qty" />
               <KpiCard label="Avg Lead Value"   value={fmt$(data.kpis.avgLeadValue)}       sub="per inquiry" />
               <KpiCard label="Zoho Leads"       value={fmtN(data.kpis.zohoLeads)}         sub="all time" />
@@ -328,7 +348,7 @@ export default function Dashboard() {
             {/* ── Activity + Funnel ── */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
 
-              <Card title={`Events per Day - Last ${range}d`}>
+              <Card title={`Events per Day`}>
                 <ResponsiveContainer width="100%" height={210}>
                   <LineChart data={data.dailyEvents} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />

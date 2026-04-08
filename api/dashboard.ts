@@ -38,14 +38,16 @@ function daysAgo(n: number) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const pin   = String(req.query.pin ?? '');
-  const range = String(req.query.range ?? '30');
+  const pin  = String(req.query.pin ?? '');
+  const from = String(req.query.from ?? daysAgo(30).slice(0, 10));
+  const to   = String(req.query.to   ?? new Date().toISOString().slice(0, 10));
 
   if (pin !== DASHBOARD_PIN) return res.status(401).json({ error: 'Unauthorized' });
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(500).json({ error: 'Supabase not configured' });
 
-  const days = parseInt(range) || 30;
-  const since = daysAgo(days);
+  // Convert date strings to ISO timestamps for Supabase filtering
+  const since = `${from}T00:00:00.000Z`;
+  const until = `${to}T23:59:59.999Z`;
 
   try {
     // Run all queries in parallel
@@ -55,8 +57,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       leadsData,
       dealsData,
     ] = await Promise.all([
-      sbGet(`events?select=session_id,event_type,properties,created_at&created_at=gte.${since}&order=created_at.asc&limit=50000`),
-      sbGet(`events?select=properties,created_at&event_type=eq.inquiry_submitted&created_at=gte.${since}&order=created_at.desc&limit=1000`),
+      sbGet(`events?select=session_id,event_type,properties,created_at&created_at=gte.${since}&created_at=lte.${until}&order=created_at.asc&limit=50000`),
+      sbGet(`events?select=properties,created_at&event_type=eq.inquiry_submitted&created_at=gte.${since}&created_at=lte.${until}&order=created_at.desc&limit=1000`),
       sbGet(`leads?select=*&order=created_at.desc&limit=500`),
       sbGet(`deals?select=*&order=closing_date.desc&limit=1000`),
     ]);
