@@ -32,28 +32,34 @@ async function fireEvent(email: string, data: Record<string, unknown>) {
 
 async function updateContactFields(email: string, data: Record<string, unknown>) {
   const fieldIds = await getFieldIds();
+  console.log('[/api/track] available perstags:', Object.keys(fieldIds));
 
-  // Map our payload keys to the AC custom field perstags defined in the plan
+  // AC strips underscores from perstags: LAST_SKU → LASTSKU
   const toUpdate: Record<string, string> = {
-    LAST_SKU:       String(data.sku   ?? ''),
-    LAST_BRAND:     String(data.brand ?? ''),
-    LAST_PART:      String(data.part  ?? ''),
-    LAST_CATEGORY:  String(data.cat   ?? ''),
-    LAST_PRICE:     String(data.price ?? ''),
-    LAST_QTY:       String(data.qty   ?? ''),
-    LAST_AVAIL:     String(data.avail ?? ''),
+    LASTSKU:       String(data.sku   ?? ''),
+    LASTBRAND:     String(data.brand ?? ''),
+    LASTPART:      String(data.part  ?? ''),
+    LASTCATEGORY:  String(data.cat   ?? ''),
+    LASTPRICE:     String(data.price ?? ''),
+    LASTQTY:       String(data.qty   ?? ''),
+    LASTAVAIL:     String(data.avail ?? ''),
     // Key spec: panels use wp, inverters use power, storage uses capacity
-    LAST_SPEC:      String(data.wp ?? data.power ?? data.capacity ?? ''),
-    LAST_IMAGE_URL: String(data.img   ?? ''),
+    LASTSPEC:      String(data.wp ?? data.power ?? data.capacity ?? ''),
+    LASTIMAGEURL:  String(data.img   ?? ''),
   };
 
   const fieldValues = Object.entries(toUpdate)
     .filter(([perstag, value]) => fieldIds[perstag] != null && value !== '')
     .map(([perstag, value]) => ({ field: String(fieldIds[perstag]), value }));
 
-  if (fieldValues.length === 0) return;
+  console.log('[/api/track] fieldValues to write:', fieldValues.length, JSON.stringify(fieldValues));
 
-  await fetch(`${process.env.AC_API_URL}/api/3/contacts/sync`, {
+  if (fieldValues.length === 0) {
+    console.warn('[/api/track] No matching fields found — have you created the custom fields in AC with the correct perstags?');
+    return;
+  }
+
+  const syncResp = await fetch(`${process.env.AC_API_URL}/api/3/contacts/sync`, {
     method: 'POST',
     headers: {
       'Api-Token': process.env.AC_API_KEY!,
@@ -61,6 +67,12 @@ async function updateContactFields(email: string, data: Record<string, unknown>)
     },
     body: JSON.stringify({ contact: { email, fieldValues } }),
   });
+  const syncBody = await syncResp.json();
+  if (!syncResp.ok) {
+    console.error('[/api/track] contacts/sync failed:', syncResp.status, JSON.stringify(syncBody));
+  } else {
+    console.log('[/api/track] contacts/sync OK');
+  }
 }
 
 export default async function handler(req: any, res: any) {
