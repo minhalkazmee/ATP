@@ -46,12 +46,12 @@ export function setTrackedEmail(email: string) {
   localStorage.setItem('ac_email', email);
 }
 
-// Fire-and-forget: adds contact to AC as soon as email is captured (even on drop-off)
-export function captureEmail(email: string): void {
+// Fire-and-forget: adds contact to AC and writes product fields immediately on email capture
+export function captureEmail(email: string, data?: Record<string, unknown>): void {
   fetch('/api/capture', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, data }),
   }).catch(() => {});
 }
 

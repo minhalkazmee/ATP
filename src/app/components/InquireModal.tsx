@@ -93,7 +93,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
   const handleEmailNext = (e: React.FormEvent) => {
     e.preventDefault();
     setTrackedEmail(form.email);
-    captureEmail(form.email); // add to AC immediately — captures drop-offs
+    captureEmail(form.email, trackingData); // add to AC + write product fields immediately
     setStep('message');
   };
 
