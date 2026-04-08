@@ -849,7 +849,7 @@ function GenericProductSection({
           </table>
         </div>
       )}
-      <p style={{ fontFamily: font, fontSize: '0.75rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0 }}>
+      <p style={{ fontFamily: font, fontSize: '0.85rem', color: '#9CA3AF', marginTop: 8, marginBottom: 4, textAlign: 'center' }}>
         {filteredData.length} products in this category{filteredData.length !== data.length ? ' (Filtered)' : ''}
       </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="items" />
