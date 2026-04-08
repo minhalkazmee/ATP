@@ -195,7 +195,7 @@ async function createZohoLead(
   let zohoResp: Response;
 
   if (existingId) {
-    // Lead exists — update product fields only
+    // Lead exists — update latest inquiry fields
     zohoResp = await fetch(`${baseUrl}/Leads/${existingId}`, {
       method: 'PUT',
       headers,
@@ -203,11 +203,41 @@ async function createZohoLead(
         data: [{
           Inquired_Product:     lead.Inquired_Product,
           Inquired_Product_URL: lead.Inquired_Product_URL,
-          First_Visit:          lead.First_Visit,
           ...(leadValueNum !== null && { Lead_Value: leadValueNum }),
         }],
       }),
     });
+
+    const putBody = await zohoResp.json();
+    const putResult = putBody?.data?.[0];
+    if (putResult?.status !== 'success') {
+      console.error('[/api/track] Zoho lead update failed:', JSON.stringify(putBody));
+    } else {
+      console.log('[/api/track] Zoho lead updated:', existingId);
+    }
+
+    // Add a Note so every inquiry is logged in the activity timeline
+    const noteLines = [
+      `Product: ${String(data.name ?? '')}`,
+      `SKU: ${String(data.sku ?? '')}`,
+      `Price: ${String(data.price ?? '')}`,
+      rQty   ? `Qty requested: ${rQty}` : '',
+      lv     ? `Lead value: ${lv}` : '',
+      String(data.url ?? '') ? `URL: ${String(data.url)}` : '',
+      data.message ? `Message: ${String(data.message)}` : '',
+    ].filter(Boolean).join('\n');
+
+    await fetch(`${baseUrl}/Leads/${existingId}/Notes`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        data: [{
+          Note_Title:   `Inquiry — ${String(data.name ?? 'product')}`,
+          Note_Content: noteLines,
+        }],
+      }),
+    });
+
   } else {
     // New lead — create with all fields
     zohoResp = await fetch(`${baseUrl}/Leads`, {
@@ -215,14 +245,14 @@ async function createZohoLead(
       headers,
       body: JSON.stringify({ data: [lead] }),
     });
-  }
 
-  const zohoBody = await zohoResp.json();
-  const zohoResult = zohoBody?.data?.[0];
-  if (zohoResult?.status !== 'success') {
-    console.error('[/api/track] Zoho lead failed:', JSON.stringify(zohoResult));
-  } else {
-    console.log(`[/api/track] Zoho lead ${existingId ? 'updated' : 'created'}:`, zohoResult?.details?.id);
+    const zohoBody = await zohoResp.json();
+    const zohoResult = zohoBody?.data?.[0];
+    if (zohoResult?.status !== 'success') {
+      console.error('[/api/track] Zoho lead create failed:', JSON.stringify(zohoResult));
+    } else {
+      console.log('[/api/track] Zoho lead created:', zohoResult?.details?.id);
+    }
   }
 }
 
