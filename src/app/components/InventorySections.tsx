@@ -23,14 +23,11 @@ const font = "Inter, sans-serif";
 
 function panelPayload(r: SolarPanel) {
   const p: Record<string, unknown> = {
-    cat: "solar-panels",
     sku: r.sku,
-    brand: r.brand,
     part: r.partNum,
     name: r.title,
     price: r.palletPrice,
     qty: r.moduleQty,
-    avail: r.avail,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
@@ -38,14 +35,11 @@ function panelPayload(r: SolarPanel) {
 
 function inverterPayload(r: Inverter) {
   const p: Record<string, unknown> = {
-    cat: "inverters",
     sku: r.sku,
-    brand: r.brand,
     part: r.partNum,
     name: r.title,
     price: r.price,
     qty: r.qty,
-    avail: r.avail,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
@@ -53,14 +47,11 @@ function inverterPayload(r: Inverter) {
 
 function storagePayload(r: StorageItem) {
   const p: Record<string, unknown> = {
-    cat: "storage",
     sku: r.sku,
-    brand: r.brand,
     part: r.partNum,
     name: r.title,
     price: r.price,
     qty: r.qty,
-    avail: r.avail,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
@@ -68,14 +59,11 @@ function storagePayload(r: StorageItem) {
 
 function genericPayload(r: GenericProduct, categoryLabel: string) {
   const p: Record<string, unknown> = {
-    cat: categoryLabel,
     sku: r.sku,
-    brand: r.brand,
     part: r.partNum,
     name: r.title,
     price: r.price,
     qty: r.qty,
-    avail: r.avail,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;

@@ -35,15 +35,12 @@ async function updateContactFields(email: string, data: Record<string, unknown>)
 
   // AC strips underscores from perstags: LAST_SKU → LASTSKU
   const toUpdate: Record<string, string> = {
-    LASTSKU:       String(data.sku   ?? ''),
-    LASTBRAND:     String(data.brand ?? ''),
-    LASTPART:      String(data.part  ?? ''),
-    LASTPRODUCTNAME: String(data.name ?? ''),
-    LASTCATEGORY:  String(data.cat   ?? ''),
-    LASTPRICE:     String(data.price ?? ''),
-    LASTQTY:       String(data.qty   ?? ''),
-    LASTAVAIL:     String(data.avail ?? ''),
-    LASTIMAGEURL:  String(data.img   ?? ''),
+    LASTSKU:         String(data.sku   ?? ''),
+    LASTPART:        String(data.part  ?? ''),
+    LASTPRODUCTNAME: String(data.name  ?? ''),
+    LASTPRICE:       String(data.price ?? ''),
+    LASTQTY:         String(data.qty   ?? ''),
+    LASTIMAGEURL:    String(data.img   ?? ''),
   };
 
   const fieldValues = Object.entries(toUpdate)
