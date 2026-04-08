@@ -82,7 +82,7 @@ function PinGate({ onAuth }: { onAuth: (pin: string) => void }) {
           {/* Card header */}
           <div style={{ background: '#EBF3FF', borderBottom: '1px solid #E5E7EB', padding: '12px 20px' }}>
             <p style={{ margin: 0, color: NAVY, fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              Insights — Restricted Access
+              Insights - Restricted Access
             </p>
           </div>
           <div style={{ padding: '28px 24px 24px' }}>
@@ -322,13 +322,13 @@ export default function Dashboard() {
               <KpiCard label="Avg Deal Value"   value={fmt$(data.kpis.avgDealValue)}       sub="per closed deal" />
               <KpiCard label="Pipeline Value"   value={fmt$(data.kpis.pipelineValue)}      sub={`${fmtN(data.kpis.openDeals)} open deals (Zoho Deals module)`} />
               <KpiCard label="Lost Deals"       value={fmtN(data.kpis.lostDeals)}         sub="closed lost" />
-              <KpiCard label="Win Rate"         value={data.kpis.closedDeals + data.kpis.lostDeals > 0 ? `${Math.round((data.kpis.closedDeals / (data.kpis.closedDeals + data.kpis.lostDeals)) * 100)}%` : '—'} sub="won / (won + lost)" />
+              <KpiCard label="Win Rate"         value={data.kpis.closedDeals + data.kpis.lostDeals > 0 ? `${Math.round((data.kpis.closedDeals / (data.kpis.closedDeals + data.kpis.lostDeals)) * 100)}%` : '-'} sub="won / (won + lost)" />
             </div>
 
             {/* ── Activity + Funnel ── */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
 
-              <Card title={`Events per Day — Last ${range}d`}>
+              <Card title={`Events per Day - Last ${range}d`}>
                 <ResponsiveContainer width="100%" height={210}>
                   <LineChart data={data.dailyEvents} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -400,7 +400,7 @@ export default function Dashboard() {
                     </thead>
                     <tbody>
                       {data.topProducts.map((p, i) => {
-                        const conv = p.expands > 0 ? ((p.inquiries / p.expands) * 100).toFixed(1) : '—';
+                        const conv = p.expands > 0 ? ((p.inquiries / p.expands) * 100).toFixed(1) : '-';
                         return (
                           <tr key={p.sku} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
                             <td style={tdStyle} title={p.name}>{clip(p.name, 30)}</td>
@@ -409,11 +409,11 @@ export default function Dashboard() {
                             <td style={{ ...tdStyle, textAlign: 'right' }}>
                               {p.inquiries > 0
                                 ? <span style={{ background: 'rgba(255,107,0,0.1)', color: ORANGE, padding: '2px 8px', borderRadius: 20, fontWeight: 700, fontSize: '0.75rem' }}>{fmtN(p.inquiries)}</span>
-                                : <span style={{ color: '#D1D5DB' }}>—</span>}
+                                : <span style={{ color: '#D1D5DB' }}>-</span>}
                             </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', color: SLATE }}>{conv}{conv !== '—' ? '%' : ''}</td>
+                            <td style={{ ...tdStyle, textAlign: 'right', color: SLATE }}>{conv}{conv !== '-' ? '%' : ''}</td>
                             <td style={{ ...tdStyle, textAlign: 'right', color: p.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: p.leadValue > 0 ? 700 : 400 }}>
-                              {p.leadValue > 0 ? fmt$(p.leadValue) : '—'}
+                              {p.leadValue > 0 ? fmt$(p.leadValue) : '-'}
                             </td>
                           </tr>
                         );
@@ -450,7 +450,7 @@ export default function Dashboard() {
             {/* ── Revenue Charts ── */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
 
-              <Card title="Monthly Revenue — Closed Won">
+              <Card title="Monthly Revenue - Closed Won">
                 {data.monthlyRevenue.length > 0 ? (
                   <ResponsiveContainer width="100%" height={210}>
                     <BarChart data={data.monthlyRevenue} margin={{ top: 4, right: 8, left: -4, bottom: 0 }}>
@@ -470,7 +470,7 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                 ) : (
                   <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D1D5DB', fontSize: '0.82rem' }}>
-                    No closed deals yet — sync Zoho to populate
+                    No closed deals yet - sync Zoho to populate
                   </div>
                 )}
               </Card>
@@ -511,20 +511,20 @@ export default function Dashboard() {
                   <tbody>
                     {data.recentDeals.map((d, i) => (
                       <tr key={d.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                        <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '—'}</span></td>
-                        <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '—'}</td>
-                        <td style={{ ...tdStyle }} title={d.product}>{clip(d.product || '—', 24)}</td>
+                        <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '-'}</span></td>
+                        <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '-'}</td>
+                        <td style={{ ...tdStyle }} title={d.product}>{clip(d.product || '-', 24)}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', color: '#16A34A', fontWeight: 700 }}>
-                          {d.amount > 0 ? fmt$(d.amount) : '—'}
+                          {d.amount > 0 ? fmt$(d.amount) : '-'}
                         </td>
                         <td style={{ ...tdStyle, color: SLATE }}>
-                          {d.closingDate ? new Date(d.closingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
+                          {d.closingDate ? new Date(d.closingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '-'}
                         </td>
                       </tr>
                     ))}
                     {data.recentDeals.length === 0 && (
                       <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>
-                        No closed deals — sync Zoho to import
+                        No closed deals - sync Zoho to import
                       </td></tr>
                     )}
                   </tbody>
@@ -546,8 +546,8 @@ export default function Dashboard() {
                   <tbody>
                     {data.pipelineDeals.map((d, i) => (
                       <tr key={d.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                        <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '—'}</span></td>
-                        <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '—'}</td>
+                        <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '-'}</span></td>
+                        <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '-'}</td>
                         <td style={{ ...tdStyle }}>
                           <span style={{
                             padding: '2px 9px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700,
@@ -555,16 +555,16 @@ export default function Dashboard() {
                           }}>{d.stage || 'Open'}</span>
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'right', color: NAVY, fontWeight: 600 }}>
-                          {d.amount > 0 ? fmt$(d.amount) : '—'}
+                          {d.amount > 0 ? fmt$(d.amount) : '-'}
                         </td>
                         <td style={{ ...tdStyle, color: SLATE }}>
-                          {d.closingDate ? new Date(d.closingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
+                          {d.closingDate ? new Date(d.closingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '-'}
                         </td>
                       </tr>
                     ))}
                     {data.pipelineDeals.length === 0 && (
                       <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>
-                        No open deals — sync Zoho to import
+                        No open deals - sync Zoho to import
                       </td></tr>
                     )}
                   </tbody>
@@ -573,7 +573,7 @@ export default function Dashboard() {
             </Card>
 
             {/* ── Lead Pipeline ── */}
-            <Card title="Lead Pipeline — Zoho CRM">
+            <Card title="Lead Pipeline - Zoho CRM">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <span style={{ fontSize: '0.8rem', color: SLATE }}>
                   {data.recentLeads.length} leads · Total: <strong style={{ color: NAVY }}>{fmt$(data.kpis.zohoLeadValue)}</strong>
@@ -599,13 +599,13 @@ export default function Dashboard() {
                     {data.recentLeads.map((l, i) => (
                       <tr key={l.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
                         <td style={tdStyle}>
-                          <p style={{ margin: 0, fontWeight: 600 }}>{l.name || '—'}</p>
+                          <p style={{ margin: 0, fontWeight: 600 }}>{l.name || '-'}</p>
                           <p style={{ margin: '1px 0 0', color: SLATE, fontSize: '0.73rem' }}>{l.email}</p>
                         </td>
-                        <td style={{ ...tdStyle, color: SLATE }}>{l.company || '—'}</td>
-                        <td style={{ ...tdStyle }} title={l.product}>{clip(l.product || '—', 24)}</td>
+                        <td style={{ ...tdStyle, color: SLATE }}>{l.company || '-'}</td>
+                        <td style={{ ...tdStyle }} title={l.product}>{clip(l.product || '-', 24)}</td>
                         <td style={{ ...tdStyle, textAlign: 'right', color: l.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: l.leadValue > 0 ? 700 : 400 }}>
-                          {l.leadValue > 0 ? fmt$(l.leadValue) : '—'}
+                          {l.leadValue > 0 ? fmt$(l.leadValue) : '-'}
                         </td>
                         <td style={{ ...tdStyle }}>
                           <span style={{
@@ -615,13 +615,13 @@ export default function Dashboard() {
                           }}>{l.status || 'New'}</span>
                         </td>
                         <td style={{ ...tdStyle, color: SLATE }}>
-                          {l.createdAt ? new Date(l.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
+                          {l.createdAt ? new Date(l.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '-'}
                         </td>
                       </tr>
                     ))}
                     {data.recentLeads.length === 0 && (
                       <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>
-                        No leads synced yet — click "Sync Zoho" to import
+                        No leads synced yet - click "Sync Zoho" to import
                       </td></tr>
                     )}
                   </tbody>

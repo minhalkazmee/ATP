@@ -21,21 +21,26 @@ async function getZohoToken(): Promise<string> {
   return data.access_token;
 }
 
-// ─── Fetch all pages of a Zoho module ────────────────────────────────────────
+// ─── Fetch SunhubATP records from a Zoho module via search criteria ──────────
+// Uses /search with criteria=(Lead_Source:equals:SunhubATP) so we only pull
+// records that originated from this tool. Handles cursor pagination for >200.
 
 async function fetchZohoModule(token: string, module: string, fields: string): Promise<any[]> {
   const all: any[] = [];
   let pageToken: string | null = null;
   let page = 1;
 
+  // Lead_Source field name is the same on both Leads and Deals modules
+  const criteria = encodeURIComponent('(Lead_Source:equals:SunhubATP)');
+
   while (true) {
-    // Use page_token (cursor) once we're past page 10 (2000 records)
+    const base = `https://www.zohoapis.com/crm/v6/${module}/search?criteria=${criteria}&fields=${fields}&per_page=200`;
     const url = pageToken
-      ? `https://www.zohoapis.com/crm/v6/${module}?fields=${fields}&per_page=200&page_token=${encodeURIComponent(pageToken)}`
-      : `https://www.zohoapis.com/crm/v6/${module}?fields=${fields}&per_page=200&page=${page}`;
+      ? `${base}&page_token=${encodeURIComponent(pageToken)}`
+      : `${base}&page=${page}`;
 
     const res = await fetch(url, { headers: { Authorization: `Zoho-oauthtoken ${token}` } });
-    if (res.status === 204) break;
+    if (res.status === 204) break; // no records match
     if (!res.ok) throw new Error(`Zoho ${module} ${res.status}: ${await res.text()}`);
 
     const data = await res.json();
@@ -44,13 +49,11 @@ async function fetchZohoModule(token: string, module: string, fields: string): P
 
     if (!data.info?.more_records) break;
 
-    // Switch to token-based pagination if provided, otherwise increment page
     if (data.info?.next_page_token) {
       pageToken = data.info.next_page_token;
     } else {
       page++;
-      // Zoho blocks standard pagination past page 10 — stop if we hit that limit
-      if (page > 10) break;
+      if (page > 10) break; // safety cap for standard pagination
     }
   }
 
