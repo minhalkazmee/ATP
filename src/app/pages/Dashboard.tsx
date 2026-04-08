@@ -204,7 +204,7 @@ export default function Dashboard() {
     try {
       const res = await fetch('/api/zoho-sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
       const j = await res.json();
-      setSyncMsg(j.ok ? `✓ Synced ${j.synced} leads` : `Error: ${j.error}`);
+      setSyncMsg(j.ok ? `✓ ${j.leads} leads, ${j.deals} deals` : `Error: ${j.error}`);
       if (j.ok) await load(pin, range);
     } catch (e: any) { setSyncMsg(`Error: ${e.message}`); }
     finally { setSyncing(false); setTimeout(() => setSyncMsg(''), 4000); }

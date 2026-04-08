@@ -59,7 +59,19 @@ async function fetchZohoModule(token: string, module: string, fields: string, cr
   return all;
 }
 
-// ─── Supabase upsert helper ───────────────────────────────────────────────────
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
+
+async function sbDelete(table: string) {
+  // Delete all rows — neq trick required since Supabase REST needs a filter
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?zoho_id=neq.null`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'apikey':        SUPABASE_KEY,
+    },
+  });
+  if (!res.ok) throw new Error(`Supabase delete ${table} ${res.status}: ${await res.text()}`);
+}
 
 async function sbUpsert(table: string, rows: object[]) {
   for (let i = 0; i < rows.length; i += 100) {
@@ -143,7 +155,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const leads = transformLeads(rawLeads);
     const deals = transformDeals(rawDeals);
 
-    // Upsert both in parallel
+    // Wipe old data first, then insert filtered set
+    await Promise.all([sbDelete('leads'), sbDelete('deals')]);
     await Promise.all([
       leads.length > 0 ? sbUpsert('leads', leads) : Promise.resolve(),
       deals.length > 0 ? sbUpsert('deals', deals) : Promise.resolve(),
