@@ -156,24 +156,50 @@ async function createZohoLead(
   // Drop empty fields
   Object.keys(lead).forEach(k => { if (lead[k] === '' || lead[k] === 'undefined') delete lead[k]; });
 
-  const zohoResp = await fetch(
-    'https://www.zohoapis.com/crm/v6/Leads',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Zoho-oauthtoken ${access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ data: [lead] }),
-    }
+  const baseUrl = 'https://www.zohoapis.com/crm/v6';
+  const headers = {
+    Authorization: `Zoho-oauthtoken ${access_token}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Check if lead already exists by email
+  const searchResp = await fetch(
+    `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})`,
+    { headers }
   );
+  const searchBody = await searchResp.json();
+  const existingId = searchBody?.data?.[0]?.id ?? null;
+
+  let zohoResp: Response;
+
+  if (existingId) {
+    // Lead exists — update product fields only
+    zohoResp = await fetch(`${baseUrl}/Leads/${existingId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        data: [{
+          Inquired_Product:     lead.Inquired_Product,
+          Inquired_Product_URL: lead.Inquired_Product_URL,
+          First_Visit:          lead.First_Visit,
+        }],
+      }),
+    });
+  } else {
+    // New lead — create with all fields
+    zohoResp = await fetch(`${baseUrl}/Leads`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ data: [lead] }),
+    });
+  }
 
   const zohoBody = await zohoResp.json();
   const zohoResult = zohoBody?.data?.[0];
   if (zohoResult?.status !== 'success') {
     console.error('[/api/track] Zoho lead failed:', JSON.stringify(zohoResult));
   } else {
-    console.log('[/api/track] Zoho lead created:', zohoResult?.details?.id);
+    console.log(`[/api/track] Zoho lead ${existingId ? 'updated' : 'created'}:`, zohoResult?.details?.id);
   }
 }
 
