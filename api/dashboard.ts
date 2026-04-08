@@ -50,15 +50,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const until = `${to}T23:59:59.999Z`;
 
   try {
+    // Noise events excluded from main count — fetched separately only for scroll chart
+    const NOISE = ['time_on_site', 'session_end', 'scroll_depth'];
+    const noiseFilter = NOISE.map(t => `event_type=neq.${t}`).join('&');
+
     // Run all queries in parallel
     const [
       allEvents,
       inquiries,
+      scrollEvents,
       leadsData,
       dealsData,
     ] = await Promise.all([
-      sbGet(`events?select=session_id,event_type,properties,created_at&created_at=gte.${since}&created_at=lte.${until}&order=created_at.asc&limit=50000`),
+      sbGet(`events?select=session_id,event_type,properties,created_at&created_at=gte.${since}&created_at=lte.${until}&${noiseFilter}&order=created_at.asc&limit=50000`),
       sbGet(`events?select=properties,created_at&event_type=eq.inquiry_submitted&created_at=gte.${since}&created_at=lte.${until}&order=created_at.desc&limit=1000`),
+      sbGet(`events?select=properties&event_type=eq.scroll_depth&created_at=gte.${since}&created_at=lte.${until}&limit=10000`),
       sbGet(`leads?select=*&order=created_at.desc&limit=500`),
       sbGet(`deals?select=*&order=closing_date.desc&limit=1000`),
     ]);
@@ -152,11 +158,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── Scroll depth distribution ─────────────────────────────────────────────
     const scrollDist: Record<number, number> = { 25: 0, 50: 0, 75: 0, 90: 0, 100: 0 };
-    for (const e of allEvents) {
-      if (e.event_type === 'scroll_depth' && e.properties?.milestone) {
-        const m = Number(e.properties.milestone);
-        if (m in scrollDist) scrollDist[m]++;
-      }
+    for (const e of scrollEvents) {
+      const m = Number(e.properties?.milestone);
+      if (m in scrollDist) scrollDist[m]++;
     }
     const scrollDepth = Object.entries(scrollDist).map(([milestone, sessions]) => ({ milestone: Number(milestone), sessions }));
 

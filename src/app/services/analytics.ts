@@ -84,8 +84,12 @@ if (typeof window !== 'undefined') {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+// Event types that are too noisy to store — excluded from the DB
+const SKIP_STORAGE = new Set(['time_on_site', 'session_end']);
+
 export function track(eventType: string, properties?: Record<string, unknown>): void {
   try {
+    if (SKIP_STORAGE.has(eventType)) return;
     buffer.push(buildEvent(eventType, properties ?? {}));
     scheduleFlush();
   } catch {
