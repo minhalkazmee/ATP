@@ -10,6 +10,13 @@ interface Kpis {
   sessions: number; events: number; inquiries: number;
   totalLeadValue: number; avgLeadValue: number;
   zohoLeads: number; zohoLeadValue: number;
+  totalRevenue: number; closedDeals: number; lostDeals: number;
+  openDeals: number; pipelineValue: number; avgDealValue: number;
+}
+
+interface Deal {
+  zohoId: string; dealName: string; amount: number; stage: string;
+  closingDate: string; accountName: string; contactName: string; product: string;
 }
 
 interface DashData {
@@ -24,6 +31,10 @@ interface DashData {
     zohoId: string; email: string; name: string; company: string;
     leadValue: number; status: string; product: string; createdAt: string;
   }[];
+  dealStages: { stage: string; count: number }[];
+  monthlyRevenue: { month: string; revenue: number }[];
+  recentDeals: Deal[];
+  pipelineDeals: Deal[];
 }
 
 const PIN_KEY    = 'atp_dash_auth';
@@ -292,7 +303,8 @@ export default function Dashboard() {
               <p style={{ margin: '4px 0 0', color: SLATE, fontSize: '0.82rem' }}>Last {range} days · {fmtN(data.kpis.events)} events from {fmtN(data.kpis.sessions)} sessions</p>
             </div>
 
-            {/* ── KPI row ── */}
+            {/* ── Traffic KPIs ── */}
+            <p style={{ margin: '0 0 8px', color: SLATE, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Traffic & Leads</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
               <KpiCard label="Sessions"         value={fmtN(data.kpis.sessions)}           sub={`last ${range}d`} />
               <KpiCard label="Events"           value={fmtN(data.kpis.events)}             sub={`last ${range}d`} />
@@ -300,7 +312,17 @@ export default function Dashboard() {
               <KpiCard label="Total Lead Value" value={fmt$(data.kpis.totalLeadValue)}     sub="from inquiries w/ qty" />
               <KpiCard label="Avg Lead Value"   value={fmt$(data.kpis.avgLeadValue)}       sub="per inquiry" />
               <KpiCard label="Zoho Leads"       value={fmtN(data.kpis.zohoLeads)}         sub="all time" />
-              <KpiCard label="Zoho Lead Value"  value={fmt$(data.kpis.zohoLeadValue)}     sub="all time" />
+            </div>
+
+            {/* ── Revenue KPIs ── */}
+            <p style={{ margin: '0 0 8px', color: SLATE, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Revenue</p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+              <KpiCard label="Total Revenue"    value={fmt$(data.kpis.totalRevenue)}       sub="closed won deals" />
+              <KpiCard label="Closed Deals"     value={fmtN(data.kpis.closedDeals)}        sub="won" />
+              <KpiCard label="Avg Deal Value"   value={fmt$(data.kpis.avgDealValue)}       sub="per closed deal" />
+              <KpiCard label="Pipeline Value"   value={fmt$(data.kpis.pipelineValue)}      sub={`${fmtN(data.kpis.openDeals)} open deals`} />
+              <KpiCard label="Lost Deals"       value={fmtN(data.kpis.lostDeals)}         sub="closed lost" />
+              <KpiCard label="Win Rate"         value={data.kpis.closedDeals + data.kpis.lostDeals > 0 ? `${Math.round((data.kpis.closedDeals / (data.kpis.closedDeals + data.kpis.lostDeals)) * 100)}%` : '—'} sub="won / (won + lost)" />
             </div>
 
             {/* ── Activity + Funnel ── */}
@@ -424,6 +446,131 @@ export default function Dashboard() {
                 </div>
               </Card>
             </div>
+
+            {/* ── Revenue Charts ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+
+              <Card title="Monthly Revenue — Closed Won">
+                {data.monthlyRevenue.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={210}>
+                    <BarChart data={data.monthlyRevenue} margin={{ top: 4, right: 8, left: -4, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
+                      <YAxis tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                      <Tooltip content={({ active, payload, label }) =>
+                        active && payload?.length ? (
+                          <div style={{ background: NAVY, color: '#fff', borderRadius: 6, padding: '7px 12px', fontSize: '0.78rem', fontFamily: 'Inter' }}>
+                            <p style={{ margin: '0 0 2px', fontWeight: 600 }}>{label}</p>
+                            <p style={{ margin: 0 }}>{fmt$(payload[0].value as number)}</p>
+                          </div>
+                        ) : null
+                      } />
+                      <Bar dataKey="revenue" fill="#16A34A" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D1D5DB', fontSize: '0.82rem' }}>
+                    No closed deals yet — sync Zoho to populate
+                  </div>
+                )}
+              </Card>
+
+              <Card title="Deal Stage Breakdown">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {data.dealStages.map((s, i) => {
+                    const max = data.dealStages[0]?.count ?? 1;
+                    const color = s.stage === 'Closed Won' ? '#16A34A' : s.stage === 'Closed Lost' ? '#EF4444' : ORANGE;
+                    return (
+                      <div key={i}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontSize: '0.75rem', color: NAVY, fontWeight: 500 }}>{clip(s.stage, 28)}</span>
+                          <span style={{ fontSize: '0.73rem', color: SLATE, fontWeight: 600 }}>{s.count}</span>
+                        </div>
+                        <div style={{ height: 4, background: '#F3F4F6', borderRadius: 3 }}>
+                          <div style={{ height: '100%', width: `${(s.count / max) * 100}%`, background: color, borderRadius: 3 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {data.dealStages.length === 0 && <p style={{ color: '#D1D5DB', fontSize: '0.82rem', margin: 0 }}>No deals synced yet</p>}
+                </div>
+              </Card>
+            </div>
+
+            {/* ── Closed Deals ── */}
+            <Card title="Closed Won Deals" style={{ marginBottom: 14 }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Deal Name', 'Account', 'Product', 'Amount', 'Closed Date'].map(h => (
+                        <th key={h} style={{ ...thStyle, textAlign: h === 'Amount' ? 'right' : 'left' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentDeals.map((d, i) => (
+                      <tr key={d.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                        <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '—'}</span></td>
+                        <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '—'}</td>
+                        <td style={{ ...tdStyle }} title={d.product}>{clip(d.product || '—', 24)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', color: '#16A34A', fontWeight: 700 }}>
+                          {d.amount > 0 ? fmt$(d.amount) : '—'}
+                        </td>
+                        <td style={{ ...tdStyle, color: SLATE }}>
+                          {d.closingDate ? new Date(d.closingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {data.recentDeals.length === 0 && (
+                      <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>
+                        No closed deals — sync Zoho to import
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* ── Open Pipeline ── */}
+            <Card title="Open Pipeline" style={{ marginBottom: 14 }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Deal Name', 'Account', 'Stage', 'Amount', 'Expected Close'].map(h => (
+                        <th key={h} style={{ ...thStyle, textAlign: h === 'Amount' ? 'right' : 'left' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.pipelineDeals.map((d, i) => (
+                      <tr key={d.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                        <td style={tdStyle}><span style={{ fontWeight: 600 }}>{d.dealName || '—'}</span></td>
+                        <td style={{ ...tdStyle, color: SLATE }}>{d.accountName || d.contactName || '—'}</td>
+                        <td style={{ ...tdStyle }}>
+                          <span style={{
+                            padding: '2px 9px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700,
+                            background: 'rgba(255,107,0,0.08)', color: ORANGE,
+                          }}>{d.stage || 'Open'}</span>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right', color: NAVY, fontWeight: 600 }}>
+                          {d.amount > 0 ? fmt$(d.amount) : '—'}
+                        </td>
+                        <td style={{ ...tdStyle, color: SLATE }}>
+                          {d.closingDate ? new Date(d.closingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {data.pipelineDeals.length === 0 && (
+                      <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>
+                        No open deals — sync Zoho to import
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
 
             {/* ── Lead Pipeline ── */}
             <Card title="Lead Pipeline — Zoho CRM">

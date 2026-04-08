@@ -9,6 +9,8 @@ const ZOHO_CLIENT_SECRET = process.env.ZOHO_CLIENT_SECRET!;
 const ZOHO_REFRESH_TOKEN = process.env.ZOHO_REFRESH_TOKEN!;
 const ZOHO_ACCOUNTS_URL  = process.env.ZOHO_ACCOUNTS_URL ?? 'https://accounts.zoho.com';
 
+// ─── Zoho Auth ────────────────────────────────────────────────────────────────
+
 async function getZohoToken(): Promise<string> {
   const res = await fetch(
     `${ZOHO_ACCOUNTS_URL}/oauth/v2/token?grant_type=refresh_token&client_id=${ZOHO_CLIENT_ID}&client_secret=${ZOHO_CLIENT_SECRET}&refresh_token=${ZOHO_REFRESH_TOKEN}`,
@@ -19,21 +21,19 @@ async function getZohoToken(): Promise<string> {
   return data.access_token;
 }
 
-async function fetchZohoLeads(token: string): Promise<any[]> {
-  const fields = 'id,Email,Full_Name,Company,Lead_Value,Lead_Status,Inquired_Product,Created_Time';
+// ─── Fetch all pages of a Zoho module ────────────────────────────────────────
+
+async function fetchZohoModule(token: string, module: string, fields: string): Promise<any[]> {
   let page = 1;
   const all: any[] = [];
 
   while (true) {
     const res = await fetch(
-      `https://www.zohoapis.com/crm/v6/Leads?fields=${fields}&page=${page}&per_page=200`,
+      `https://www.zohoapis.com/crm/v6/${module}?fields=${fields}&page=${page}&per_page=200`,
       { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
     );
-    if (res.status === 204) break; // no more records
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Zoho Leads ${res.status}: ${t}`);
-    }
+    if (res.status === 204) break;
+    if (!res.ok) throw new Error(`Zoho ${module} ${res.status}: ${await res.text()}`);
     const data = await res.json();
     if (!data.data?.length) break;
     all.push(...data.data);
@@ -44,23 +44,12 @@ async function fetchZohoLeads(token: string): Promise<any[]> {
   return all;
 }
 
-async function upsertLeads(leads: any[]) {
-  const rows = leads.map(l => ({
-    zoho_id:    String(l.id),
-    email:      l.Email ?? null,
-    name:       l.Full_Name ?? null,
-    company:    l.Company ?? null,
-    lead_value: l.Lead_Value ? parseFloat(String(l.Lead_Value).replace(/[^0-9.]/g, '')) || null : null,
-    status:     l.Lead_Status ?? null,
-    product:    l.Inquired_Product ?? null,
-    created_at: l.Created_Time ?? null,
-    synced_at:  new Date().toISOString(),
-  }));
+// ─── Supabase upsert helper ───────────────────────────────────────────────────
 
-  // Upsert in batches of 100
+async function sbUpsert(table: string, rows: object[]) {
   for (let i = 0; i < rows.length; i += 100) {
     const batch = rows.slice(i, i + 100);
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -70,9 +59,49 @@ async function upsertLeads(leads: any[]) {
       },
       body: JSON.stringify(batch),
     });
-    if (!res.ok) throw new Error(`Supabase upsert ${res.status}: ${await res.text()}`);
+    if (!res.ok) throw new Error(`Supabase ${table} upsert ${res.status}: ${await res.text()}`);
   }
 }
+
+// ─── Transform raw Zoho records ──────────────────────────────────────────────
+
+function parseAmount(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  const n = parseFloat(String(v).replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function transformLeads(leads: any[]) {
+  return leads.map(l => ({
+    zoho_id:    String(l.id),
+    email:      l.Email      ?? null,
+    name:       l.Full_Name  ?? null,
+    company:    l.Company    ?? null,
+    lead_value: parseAmount(l.Lead_Value),
+    status:     l.Lead_Status       ?? null,
+    product:    l.Inquired_Product  ?? null,
+    created_at: l.Created_Time      ?? null,
+    synced_at:  new Date().toISOString(),
+  }));
+}
+
+function transformDeals(deals: any[]) {
+  return deals.map(d => ({
+    zoho_id:      String(d.id),
+    deal_name:    d.Deal_Name    ?? null,
+    amount:       parseAmount(d.Amount),
+    stage:        d.Stage        ?? null,
+    closing_date: d.Closing_Date ?? null,
+    account_name: d.Account_Name ?? null,
+    contact_name: typeof d.Contact_Name === 'object' ? (d.Contact_Name?.name ?? null) : (d.Contact_Name ?? null),
+    email:        d.Email        ?? null,
+    product:      d.Inquired_Product ?? d.Product_Name ?? null,
+    created_at:   d.Created_Time ?? null,
+    synced_at:    new Date().toISOString(),
+  }));
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -85,9 +114,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const token = await getZohoToken();
-    const leads = await fetchZohoLeads(token);
-    if (leads.length > 0) await upsertLeads(leads);
-    return res.status(200).json({ ok: true, synced: leads.length });
+
+    // Fetch Leads and Deals in parallel
+    const [rawLeads, rawDeals] = await Promise.all([
+      fetchZohoModule(token, 'Leads',
+        'id,Email,Full_Name,Company,Lead_Value,Lead_Status,Inquired_Product,Created_Time'),
+      fetchZohoModule(token, 'Deals',
+        'id,Deal_Name,Amount,Stage,Closing_Date,Account_Name,Contact_Name,Email,Inquired_Product,Created_Time'),
+    ]);
+
+    const leads = transformLeads(rawLeads);
+    const deals = transformDeals(rawDeals);
+
+    // Upsert both in parallel
+    await Promise.all([
+      leads.length > 0 ? sbUpsert('leads', leads) : Promise.resolve(),
+      deals.length > 0 ? sbUpsert('deals', deals) : Promise.resolve(),
+    ]);
+
+    return res.status(200).json({
+      ok:    true,
+      leads: leads.length,
+      deals: deals.length,
+    });
   } catch (err: any) {
     console.error('[zoho-sync]', err.message);
     return res.status(500).json({ error: err.message });

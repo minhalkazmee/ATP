@@ -53,10 +53,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       allEvents,
       inquiries,
       leadsData,
+      dealsData,
     ] = await Promise.all([
       sbGet(`events?select=session_id,event_type,properties,created_at&created_at=gte.${since}&order=created_at.asc&limit=50000`),
       sbGet(`events?select=properties,created_at&event_type=eq.inquiry_submitted&created_at=gte.${since}&order=created_at.desc&limit=1000`),
       sbGet(`leads?select=*&order=created_at.desc&limit=500`),
+      sbGet(`deals?select=*&order=closing_date.desc&limit=1000`),
     ]);
 
     // ── KPIs ──────────────────────────────────────────────────────────────────
@@ -160,10 +162,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status:     l.status,
       product:    l.product,
       createdAt:  l.created_at,
-      syncedAt:   l.synced_at,
     }));
 
     const zohoLeadValue = (leadsData as any[]).reduce((s: number, l: any) => s + (Number(l.lead_value) || 0), 0);
+
+    // ── Deals / Revenue (Zoho sync) ───────────────────────────────────────────
+    const allDeals = dealsData as any[];
+
+    const closedWon  = allDeals.filter(d => d.stage === 'Closed Won');
+    const closedLost = allDeals.filter(d => d.stage === 'Closed Lost');
+    const openDeals  = allDeals.filter(d => d.stage !== 'Closed Won' && d.stage !== 'Closed Lost');
+
+    const totalRevenue   = closedWon.reduce((s, d)  => s + (Number(d.amount) || 0), 0);
+    const pipelineValue  = openDeals.reduce((s, d)  => s + (Number(d.amount) || 0), 0);
+    const avgDealValue   = closedWon.length > 0 ? totalRevenue / closedWon.length : 0;
+
+    // Deal stage breakdown for chart
+    const stageMap: Record<string, number> = {};
+    for (const d of allDeals) {
+      const s = d.stage ?? 'Unknown';
+      stageMap[s] = (stageMap[s] ?? 0) + 1;
+    }
+    const dealStages = Object.entries(stageMap)
+      .sort(([, a], [, b]) => b - a)
+      .map(([stage, count]) => ({ stage, count }));
+
+    // Monthly revenue (closed won by month)
+    const revenueByMonth: Record<string, number> = {};
+    for (const d of closedWon) {
+      if (!d.closing_date) continue;
+      const month = String(d.closing_date).slice(0, 7); // YYYY-MM
+      revenueByMonth[month] = (revenueByMonth[month] ?? 0) + (Number(d.amount) || 0);
+    }
+    const monthlyRevenue = Object.entries(revenueByMonth)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12) // last 12 months
+      .map(([month, revenue]) => ({ month, revenue: Math.round(revenue * 100) / 100 }));
+
+    // Recent closed deals
+    const recentDeals = closedWon
+      .sort((a, b) => new Date(b.closing_date ?? 0).getTime() - new Date(a.closing_date ?? 0).getTime())
+      .slice(0, 50)
+      .map((d: any) => ({
+        zohoId:      d.zoho_id,
+        dealName:    d.deal_name,
+        amount:      d.amount,
+        stage:       d.stage,
+        closingDate: d.closing_date,
+        accountName: d.account_name,
+        contactName: d.contact_name,
+        product:     d.product,
+      }));
+
+    // All open pipeline deals
+    const pipelineDeals = openDeals
+      .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
+      .slice(0, 30)
+      .map((d: any) => ({
+        zohoId:      d.zoho_id,
+        dealName:    d.deal_name,
+        amount:      d.amount,
+        stage:       d.stage,
+        closingDate: d.closing_date,
+        accountName: d.account_name,
+        contactName: d.contact_name,
+        product:     d.product,
+      }));
 
     return res.status(200).json({
       kpis: {
@@ -174,6 +238,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgLeadValue:   Math.round(avgLeadValue * 100) / 100,
         zohoLeads:      leadsData.length,
         zohoLeadValue:  Math.round(zohoLeadValue * 100) / 100,
+        // Revenue
+        totalRevenue:   Math.round(totalRevenue * 100) / 100,
+        closedDeals:    closedWon.length,
+        lostDeals:      closedLost.length,
+        openDeals:      openDeals.length,
+        pipelineValue:  Math.round(pipelineValue * 100) / 100,
+        avgDealValue:   Math.round(avgDealValue * 100) / 100,
       },
       dailyEvents,
       funnel,
@@ -182,6 +253,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       categoryBreakdown,
       scrollDepth,
       recentLeads,
+      // Revenue / deals
+      dealStages,
+      monthlyRevenue,
+      recentDeals,
+      pipelineDeals,
     });
   } catch (err: any) {
     console.error('[dashboard]', err.message);
