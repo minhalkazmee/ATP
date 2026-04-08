@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { setTrackedEmail, trackInquiry, captureEmail } from '../services/acTrack';
+import { track } from '../services/analytics';
 
 interface Props {
   trackingData: Record<string, unknown>;
@@ -56,6 +57,14 @@ export function InquireModal({ trackingData, onClose }: Props) {
   const initialStep: Step = knownEmail ? 'message' : 'email';
 
   const [step, setStep] = useState<Step>(initialStep);
+
+  useEffect(() => {
+    // Track the initial step reached when modal opens
+    if (initialStep === 'message') {
+      track('inquiry_step_message', { sku: trackingData.sku, name: trackingData.name });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [form, setForm] = useState({
     email:     knownEmail     || '',
     message:   '',
@@ -85,6 +94,17 @@ export function InquireModal({ trackingData, onClose }: Props) {
 
   const submit = async () => {
     setLoading(true);
+    const rQty = Number(form.qty ?? 0);
+    const uPrice = Number(trackingData.unitPrice ?? 0);
+    const leadValue = rQty > 0 && uPrice > 0 ? rQty * uPrice : 0;
+    track('inquiry_submitted', {
+      sku:          trackingData.sku,
+      name:         trackingData.name,
+      category:     trackingData.category,
+      qty:          form.qty || null,
+      leadValue:    leadValue > 0 ? leadValue : null,
+      emailKnown:   !!knownEmail,
+    });
     try {
       await trackInquiry({ ...trackingData, ...(form.qty ? { requestedQty: form.qty } : {}) }, {
         firstName: form.firstName,
@@ -110,6 +130,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
     e.preventDefault();
     setTrackedEmail(form.email);
     captureEmail(form.email, trackingData); // add to AC + write product fields immediately
+    track('inquiry_step_message', { sku: trackingData.sku, name: trackingData.name });
     setStep('message');
   };
 
@@ -118,6 +139,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
     if (knownDetails) {
       await submit();
     } else {
+      track('inquiry_step_details', { sku: trackingData.sku, name: trackingData.name });
       setStep('details');
     }
   };

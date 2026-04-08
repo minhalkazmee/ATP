@@ -9,6 +9,14 @@ import { WatchlistDrawer, loadPrefs, type WatchlistPrefs } from "./components/Wa
 import { ProfilePopup } from "./components/ProfilePopup";
 import { fetchAllDeals, DealsData } from "./services/sunhubApi";
 import { trackEvent, setTrackedEmail } from "./services/acTrack";
+import { track, initScrollTracking, initTimeTracking } from "./services/analytics";
+import Dashboard from "./pages/Dashboard";
+
+// Render dashboard for /dashboard route
+if (window.location.pathname === '/dashboard') {
+  const root = document.getElementById('root');
+  if (root) root.style.cssText = '';
+}
 
 const sectionIds = ["solar-panels", "inverters", "storage", "racking", "accessories", "diy", "components", "misc"];
 
@@ -25,6 +33,7 @@ const categoryLabels: Record<string, string> = {
 
 
 export default function App() {
+  if (window.location.pathname === '/dashboard') return <Dashboard />;
   const [activeTab, setActiveTab] = useState("solar-panels");
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -74,12 +83,17 @@ export default function App() {
 
   useEffect(() => {
     loadData();
-    trackEvent('page_viewed', {
-      url: window.location.href,
-      referrer: document.referrer || 'direct',
+    const pageProps = {
+      url:       window.location.href,
+      referrer:  document.referrer || 'direct',
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
-    });
+    };
+    trackEvent('page_viewed', pageProps);
+    track('page_view', pageProps);
+    const cleanupScroll = initScrollTracking();
+    const cleanupTime   = initTimeTracking();
+    return () => { cleanupScroll(); cleanupTime(); };
   }, [loadData]);
 
   const refs: Record<string, React.RefObject<HTMLElement | null>> = {
@@ -95,11 +109,9 @@ export default function App() {
 
   const handleTabClick = useCallback((id: string) => {
     setActiveTab(id);
-    trackEvent('category_viewed', {
-      category: id,
-      label: categoryLabels[id] ?? id,
-      timestamp: new Date().toISOString(),
-    });
+    const catProps = { category: id, label: categoryLabels[id] ?? id, timestamp: new Date().toISOString() };
+    trackEvent('category_viewed', catProps);
+    track('category_tab', catProps);
     isClickScroll.current = true;
     const el = document.getElementById(id);
     if (el) {

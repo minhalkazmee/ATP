@@ -1,6 +1,7 @@
 import { forwardRef, useState, useMemo, useEffect, useCallback } from "react";
 import { InquireModal } from "./InquireModal";
 import { trackEvent, trackInquiry } from "../services/acTrack";
+import { track } from "../services/analytics";
 import { Plus, Minus, ArrowUpDown, Loader2, ChevronDown } from "lucide-react";
 import { AvailabilityBadge } from "./AvailabilityBadge";
 import { type WatchlistPrefs } from "./WatchlistDrawer";
@@ -203,6 +204,7 @@ function FilterSelect({ label, sublabel, value, onChange, options, trackCat, tra
     onChange(v);
     if (trackCat && trackField && v !== 'All') {
       trackEvent('filter_applied', { cat: trackCat, field: trackField, value: v });
+      track('filter_applied', { category: trackCat, field: trackField, value: v });
     }
   };
   return (
@@ -463,9 +465,9 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
               </tr>
             ) : visibleData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', panelPayload(r))} /></td>
+                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = panelPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'solar-panels' }); }} /></td>
                 <td style={tdStyle}>{r.brand}</td>
-                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'solar-panels' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                 <td style={tdStyle} className={H}>{r.type}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.wp}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.palletPrice}</td>
@@ -592,9 +594,9 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
               </tr>
             ) : visibleData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', inverterPayload(r))} /></td>
+                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = inverterPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'inverters' }); }} /></td>
                 <td style={tdStyle}>{r.brand}</td>
-                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'inverters' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                 <td style={tdStyle} className={H}>{r.type}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.power}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
@@ -701,9 +703,9 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
               </tr>
             ) : visibleData.map((r) => [
               <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', storagePayload(r))} /></td>
+                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = storagePayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'storage' }); }} /></td>
                 <td style={tdStyle}>{r.brand}</td>
-                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'storage' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                 <td style={tdStyle} className={H}>{r.chemistry}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.capacity}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
@@ -792,9 +794,9 @@ function GenericProductSection({
             <tbody>
               {visibleData.map((r) => [
                 <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => trackEvent('product_expanded', genericPayload(r, id))} /></td>
+                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = genericPayload(r, id); trackEvent('product_expanded', p); track('product_expand', { ...p, category: id }); }} /></td>
                   <td style={tdStyle}>{r.brand}</td>
-                  <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                  <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: id })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.category}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
                   <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.qty}</td>
