@@ -168,12 +168,9 @@ async function createZohoLead(
     }
   );
 
-  if (!zohoResp.ok) {
-    const body = await zohoResp.json();
-    console.error('[/api/track] Zoho lead creation failed:', zohoResp.status, JSON.stringify(body));
-  } else {
-    console.log('[/api/track] Zoho lead created OK');
-  }
+  const zohoBody = await zohoResp.json();
+  console.log('[/api/track] Zoho status:', zohoResp.status, JSON.stringify(zohoBody));
+  console.log('[/api/track] lead payload sent:', JSON.stringify({ data: [lead] }));
 }
 
 export default async function handler(req: any, res: any) {
