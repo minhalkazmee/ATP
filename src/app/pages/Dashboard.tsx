@@ -396,7 +396,8 @@ function fmtDisplay(d?: Date) {
 
 export default function Dashboard() {
   const [pin, setPin]       = useState<string | null>(null);
-  const [range, setRange]   = useState<DateRange>({ from: daysAgo(30), to: new Date() });
+  const [range, setRange]         = useState<DateRange>({ from: daysAgo(30), to: new Date() });
+  const [pendingRange, setPendingRange] = useState<DateRange>({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const [data, setData]     = useState<DashData | null>(null);
@@ -510,7 +511,7 @@ export default function Dashboard() {
 
           {/* Date range picker */}
           <div ref={pickerRef} style={{ position: 'relative' }}>
-            <button onClick={() => setPickerOpen(o => !o)} style={{
+            <button onClick={() => { setPendingRange({}); setPickerOpen(o => !o); }} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '5px 14px', borderRadius: 8, cursor: 'pointer',
               border: `1.5px solid ${pickerOpen ? ORANGE : '#E5E7EB'}`,
@@ -547,8 +548,8 @@ export default function Dashboard() {
                 </div>
                 <DayPicker
                   mode="range"
-                  selected={range}
-                  onSelect={(r) => { if (r) setRange(r); }}
+                  selected={pendingRange}
+                  onSelect={(r) => { if (r) setPendingRange(r); }}
                   numberOfMonths={2}
                   styles={{
                     root: { fontFamily: 'Inter, sans-serif', fontSize: '0.82rem', margin: 0 },
@@ -566,19 +567,20 @@ export default function Dashboard() {
                     fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', color: SLATE,
                   }}>Cancel</button>
                   <button
-                    disabled={!range.from || !range.to}
+                    disabled={!pendingRange.from || !pendingRange.to}
                     onClick={() => {
-                      if (range.from && range.to) {
+                      if (pendingRange.from && pendingRange.to) {
+                        setRange(pendingRange);
                         setPickerOpen(false);
-                        if (pin) load(pin, toDateStr(range.from), toDateStr(range.to));
+                        if (pin) load(pin, toDateStr(pendingRange.from), toDateStr(pendingRange.to));
                       }
                     }}
                     style={{
-                      padding: '6px 18px', borderRadius: 8, cursor: range.from && range.to ? 'pointer' : 'not-allowed',
-                      border: 'none', background: range.from && range.to ? 'linear-gradient(135deg,#FF6B00,#FF8533)' : '#F1F5F9',
+                      padding: '6px 18px', borderRadius: 8, cursor: pendingRange.from && pendingRange.to ? 'pointer' : 'not-allowed',
+                      border: 'none', background: pendingRange.from && pendingRange.to ? 'linear-gradient(135deg,#FF6B00,#FF8533)' : '#F1F5F9',
                       fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', fontWeight: 700,
-                      color: range.from && range.to ? '#fff' : '#94A3B8',
-                      boxShadow: range.from && range.to ? '0 2px 8px rgba(255,107,0,0.22)' : 'none',
+                      color: pendingRange.from && pendingRange.to ? '#fff' : '#94A3B8',
+                      boxShadow: pendingRange.from && pendingRange.to ? '0 2px 8px rgba(255,107,0,0.22)' : 'none',
                     }}>Apply</button>
                 </div>
               </div>
