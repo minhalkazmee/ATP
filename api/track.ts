@@ -160,7 +160,7 @@ async function createZohoLead(
     data.message ? `\nMessage: ${String(data.message)}` : '',
   ].filter(Boolean).join('\n');
 
-  const leadValueNum = rQty > 0 && uPrice > 0 ? parseFloat((rQty * uPrice).toFixed(2)) : null;
+  const leadValueNum = rQty > 0 && uPrice > 0 ? (rQty * uPrice).toFixed(2) : null;
 
   const lead: Record<string, unknown> = {
     Last_Name:           contact.lastName  || 'Unknown',
@@ -196,20 +196,24 @@ async function createZohoLead(
 
   if (existingId) {
     // Lead exists — update latest inquiry fields
+    const updatePayload = {
+      data: [{
+        Inquired_Product:     lead.Inquired_Product,
+        Inquired_Product_URL: lead.Inquired_Product_URL,
+        ...(leadValueNum !== null && { Lead_Value: leadValueNum }),
+      }],
+    };
+    console.log('[/api/track] Zoho update payload:', JSON.stringify(updatePayload));
+
     zohoResp = await fetch(`${baseUrl}/Leads/${existingId}`, {
       method: 'PUT',
       headers,
-      body: JSON.stringify({
-        data: [{
-          Inquired_Product:     lead.Inquired_Product,
-          Inquired_Product_URL: lead.Inquired_Product_URL,
-          ...(leadValueNum !== null && { Lead_Value: leadValueNum }),
-        }],
-      }),
+      body: JSON.stringify(updatePayload),
     });
 
     const putBody = await zohoResp.json();
     const putResult = putBody?.data?.[0];
+    console.log('[/api/track] Zoho update response:', JSON.stringify(putBody));
     if (putResult?.status !== 'success') {
       console.error('[/api/track] Zoho lead update failed:', JSON.stringify(putBody));
     } else {
