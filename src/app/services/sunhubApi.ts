@@ -15,6 +15,7 @@ export type Availability = "Available Now" | "Inbound" | "Contact Us";
 
 export interface SolarPanel {
   sku: string;
+  title: string;
   brand: string;
   partNum: string;
   wp: string;
@@ -48,6 +49,7 @@ export interface SolarPanel {
 
 export interface Inverter {
   sku: string;
+  title: string;
   brand: string;
   partNum: string;
   power: string;
@@ -73,6 +75,7 @@ export interface Inverter {
 
 export interface StorageItem {
   sku: string;
+  title: string;
   brand: string;
   partNum: string;
   capacity: string;
@@ -97,6 +100,7 @@ export interface StorageItem {
 
 export interface GenericProduct {
   sku: string;
+  title: string;
   brand: string;
   partNum: string;
   category: string;
@@ -284,6 +288,7 @@ function transformPanel(deal: RawDeal): SolarPanel {
 
   return {
     sku: deal.listing_id,
+    title: deal.title || '',
     brand: deal.brand,
     partNum: deal.part_no,
     wp: `${wattage}W`,
@@ -323,6 +328,7 @@ function transformInverter(deal: RawDeal): Inverter {
 
   return {
     sku: deal.listing_id,
+    title: deal.title || '',
     brand: deal.brand,
     partNum: deal.part_no,
     power: powerStr,
@@ -355,6 +361,7 @@ function transformStorage(deal: RawDeal): StorageItem {
 
   return {
     sku: deal.listing_id,
+    title: deal.title || '',
     brand: deal.brand,
     partNum: deal.part_no,
     capacity: deal.total_capacity ? `${deal.total_capacity} kWh` : "",
@@ -383,6 +390,7 @@ function transformGeneric(deal: RawDeal): GenericProduct {
 
   return {
     sku: deal.listing_id,
+    title: deal.title || '',
     brand: deal.brand,
     partNum: deal.part_no,
     category: deal.category || "",
