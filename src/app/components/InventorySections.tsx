@@ -33,6 +33,7 @@ function panelPayload(r: SolarPanel) {
     timestamp: new Date().toISOString(),
     price: r.palletPrice,
     qty: r.moduleQty,
+    moq: r.moq,
     unitPrice: r.pricePerWatt * parseInt(r.wp),
   };
   if (r.imageUrl) p.img = r.imageUrl;
@@ -48,6 +49,7 @@ function inverterPayload(r: Inverter) {
     timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
+    moq: r.moq,
     unitPrice: r.priceNum,
   };
   if (r.imageUrl) p.img = r.imageUrl;
@@ -63,6 +65,7 @@ function storagePayload(r: StorageItem) {
     timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
+    moq: r.moq,
     unitPrice: r.priceNum,
   };
   if (r.imageUrl) p.img = r.imageUrl;
@@ -78,6 +81,7 @@ function genericPayload(r: GenericProduct, categoryLabel: string) {
     timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
+    moq: r.moq,
     unitPrice: r.priceNum,
   };
   if (r.imageUrl) p.img = r.imageUrl;
@@ -164,14 +168,20 @@ function ClearFiltersBtn({ onClick }: { onClick: () => void }) {
   );
 }
 
+// Module-level — only one InventorySections instance is mounted; avoids deep prop drilling
+let _onInquireOpenChange: ((open: boolean) => void) | null = null;
+
 function InquireBtn({ partNum, trackingData }: { partNum: string; trackingData?: Record<string, unknown> }) {
   const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    setOpen(false);
+    _onInquireOpenChange?.(false);
+  }, []);
 
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); _onInquireOpenChange?.(true); }}
         className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
         style={{
           background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
@@ -444,7 +454,10 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
           <thead>
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
-              <th style={thStyle}>Manufacturer</th>
+              <th style={thStyle}>
+                Manufacturer{' '}
+                <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filtered.length})</span>
+              </th>
               <th style={thStyle} className={H}>Part Number<span style={thSub}>Click to view datasheet</span></th>
               <th style={thStyle} className={H}>Cell Type</th>
               <SortHeader sup="1">Wp</SortHeader>
@@ -574,7 +587,10 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
           <thead>
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
-              <th style={thStyle}>Manufacturer</th>
+              <th style={thStyle}>
+                Manufacturer{' '}
+                <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filtered.length})</span>
+              </th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Type</th>
               <SortHeader>Power</SortHeader>
@@ -683,7 +699,10 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
           <thead>
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
-              <th style={thStyle}>Manufacturer</th>
+              <th style={thStyle}>
+                Manufacturer{' '}
+                <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filtered.length})</span>
+              </th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Chemistry</th>
               <SortHeader>Capacity</SortHeader>
@@ -781,7 +800,10 @@ function GenericProductSection({
             <thead>
               <tr>
                 <th style={{ ...thStyle, width: 30 }}></th>
-                <th style={thStyle}>Manufacturer</th>
+                <th style={thStyle}>
+                  Manufacturer{' '}
+                  <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filteredData.length})</span>
+                </th>
                 <th style={thStyle} className={H}>Part Number</th>
                 <th style={thStyle} className={H}>Category</th>
                 <SortHeader>Price</SortHeader>
@@ -850,9 +872,15 @@ interface InventorySectionsProps {
   error: string | null;
   onRetry: () => void;
   prefs?: WatchlistPrefs;
+  onInquireOpenChange?: (open: boolean) => void;
 }
 
-export function InventorySections({ refs, data, loading, error, onRetry, prefs }: InventorySectionsProps) {
+export function InventorySections({ refs, data, loading, error, onRetry, prefs, onInquireOpenChange }: InventorySectionsProps) {
+  // Register the module-level callback so InquireBtn can notify the parent
+  useEffect(() => {
+    _onInquireOpenChange = onInquireOpenChange ?? null;
+    return () => { _onInquireOpenChange = null; };
+  }, [onInquireOpenChange]);
   if (error || !data) {
     return (
       <div className="mx-auto max-w-[1400px] px-5 py-10">

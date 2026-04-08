@@ -39,6 +39,7 @@ export default function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [prefs, setPrefs] = useState<WatchlistPrefs>(loadPrefs);
   const isClickScroll = useRef(false);
+  const inquireOpenRef = useRef(false);
 
   const [data, setData] = useState<DealsData>({
     panels: [], inverters: [], storage: [], racking: [], accessories: [], diy: [], components: [], misc: []
@@ -77,7 +78,9 @@ export default function App() {
     const completed  = localStorage.getItem('atp_profile');
     const dismissed  = sessionStorage.getItem('atp_profile_dismissed');
     if (!completed && !dismissed) {
-      const t = setTimeout(() => setProfileOpen(true), 30000);
+      const t = setTimeout(() => {
+        if (!inquireOpenRef.current) setProfileOpen(true);
+      }, 30000);
       return () => clearTimeout(t);
     }
   }, []);
@@ -149,7 +152,7 @@ export default function App() {
       <Navbar onOpenWatchlist={() => setWatchlistOpen(true)} />
       {!prefs.focusMode && <HeroStrip data={data} loading={loading} />}
       {!prefs.focusMode && <CategoryTabs active={activeTab} onTabClick={handleTabClick} />}
-      <InventorySections refs={refs} data={data} loading={loading} error={error} onRetry={loadData} prefs={prefs} />
+      <InventorySections refs={refs} data={data} loading={loading} error={error} onRetry={loadData} prefs={prefs} onInquireOpenChange={v => { inquireOpenRef.current = v; }} />
       {!prefs.focusMode && <FAQSection />}
       <Footer />
       <WatchlistDrawer open={watchlistOpen} onClose={() => setWatchlistOpen(false)} prefs={prefs} onChange={setPrefs} />

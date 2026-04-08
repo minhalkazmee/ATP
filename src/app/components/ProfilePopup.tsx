@@ -260,7 +260,7 @@ export function ProfilePopup({ onClose }: Props) {
   const dotsSteps: Step[] = needContact ? ['details', 'contact'] : ['details'];
   const currentDotIdx = dotsSteps.indexOf(step);
 
-  const buyerReady = buyerType && timeline && volume;
+  const buyerReady = buyerType && timeline;
   const sellerReady = company.trim() && sells.length > 0 && inventoryValue;
 
   return (
@@ -370,18 +370,13 @@ export function ProfilePopup({ onClose }: Props) {
               </p>
 
               <div style={{ marginBottom: 18 }}>
-                <p style={label}>What best describes you?</p>
-                <RadioPills options={BUYER_TYPES} value={buyerType} onChange={setBuyerType} />
-              </div>
-
-              <div style={{ marginBottom: 18 }}>
                 <p style={label}>Purchase timeline</p>
                 <RadioPills options={TIMELINES} value={timeline} onChange={setTimeline} />
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <p style={label}>Typical order size</p>
-                <RadioPills options={VOLUMES} value={volume} onChange={setVolume} />
+                <p style={label}>What best describes you?</p>
+                <RadioPills options={BUYER_TYPES} value={buyerType} onChange={setBuyerType} />
               </div>
 
               <button
@@ -557,7 +552,7 @@ export function ProfilePopup({ onClose }: Props) {
                 You're all set!
               </h2>
               <p style={{ margin: '0 0 20px', color: '#94A3B8', fontFamily: font, fontSize: '0.84rem', lineHeight: 1.65 }}>
-                SunhubATP is a buyer marketplace. To list your<br />inventory and connect with buyers, create your<br />seller account on Sunhub.
+                To list your inventory and connect with buyers,<br />create your seller account on Sunhub.
               </p>
               <a
                 href="https://www.sunhub.com/register-business/seller"

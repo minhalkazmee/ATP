@@ -48,6 +48,32 @@ const primaryBtn = (disabled = false): React.CSSProperties => ({
   transition: 'all 0.2s',
 });
 
+const FREE_DOMAINS = new Set([
+  'gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com',
+  'aol.com','live.com','msn.com','protonmail.com','me.com','mac.com',
+  'yahoo.co.uk','googlemail.com',
+]);
+
+function isBusinessEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase() ?? '';
+  return !!domain && !FREE_DOMAINS.has(domain);
+}
+
+function companyFromEmail(email: string): string {
+  const domain = email.split('@')[1]?.toLowerCase() ?? '';
+  const name = domain.split('.')[0] ?? '';
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function parseMoqDefault(moq: unknown): { qty: string; unit: string } {
+  const s = String(moq ?? '');
+  const numMatch = s.match(/\d+/);
+  const qty = numMatch ? numMatch[0] : '';
+  const lower = s.toLowerCase();
+  const unit = lower.includes('container') ? 'containers' : lower.includes('pallet') ? 'pallets' : 'units';
+  return { qty, unit };
+}
+
 export function InquireModal({ trackingData, onClose }: Props) {
   const knownEmail     = localStorage.getItem('ac_email');
   const knownFirstName = localStorage.getItem('ac_first_name') || '';
@@ -65,10 +91,12 @@ export function InquireModal({ trackingData, onClose }: Props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const moqDefault = parseMoqDefault(trackingData.moq);
   const [form, setForm] = useState({
     email:     knownEmail     || '',
     message:   '',
-    qty:       '',
+    qty:       moqDefault.qty,
+    unit:      moqDefault.unit,
     firstName: knownFirstName,
     lastName:  knownLastName,
     phone:     localStorage.getItem('ac_phone')   || '',
@@ -102,6 +130,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
       name:         trackingData.name,
       category:     trackingData.category,
       qty:          form.qty || null,
+      unit:         form.unit || 'units',
       leadValue:    leadValue > 0 ? leadValue : null,
       emailKnown:   !!knownEmail,
     });
@@ -139,6 +168,11 @@ export function InquireModal({ trackingData, onClose }: Props) {
     if (knownDetails) {
       await submit();
     } else {
+      // Auto-extract company from business email before showing details step
+      const email = form.email || knownEmail || '';
+      if (isBusinessEmail(email) && !form.company) {
+        setForm(p => ({ ...p, company: companyFromEmail(email) }));
+      }
       track('inquiry_step_details', { sku: trackingData.sku, name: trackingData.name });
       setStep('details');
     }
@@ -270,24 +304,34 @@ export function InquireModal({ trackingData, onClose }: Props) {
                 Pricing, availability, lead time — anything. Optional.
               </p>
 
-              <label style={label}>Your message</label>
-              <textarea
-                placeholder="e.g. Can you confirm availability and lead time to Texas?"
-                value={form.message} onChange={set('message')}
-                rows={3}
-                style={{ ...inp, resize: 'vertical', lineHeight: 1.65, marginBottom: 12 }}
-              />
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                <label style={{ ...label, margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  How many do you need?
-                </label>
+              <label style={{ ...label, marginBottom: 6 }}>How many do you need?</label>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                 <input
                   type="number" min={1} placeholder="Qty"
                   value={form.qty} onChange={set('qty')}
                   style={{ ...inp, width: 90, flexShrink: 0, padding: '8px 10px', fontSize: '0.83rem' }}
                 />
+                <select
+                  value={form.unit}
+                  onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
+                  style={{ ...inp, flex: 1, padding: '8px 10px', fontSize: '0.83rem', cursor: 'pointer', appearance: 'auto' }}
+                >
+                  <option value="units">Units</option>
+                  <option value="pallets">Pallets</option>
+                  <option value="containers">Containers</option>
+                </select>
               </div>
+
+              <label style={label}>
+                Message{' '}
+                <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
+              </label>
+              <textarea
+                placeholder="e.g. Can you confirm availability and lead time to Texas?"
+                value={form.message} onChange={set('message')}
+                rows={3}
+                style={{ ...inp, resize: 'vertical', lineHeight: 1.65, marginBottom: 20 }}
+              />
 
               <button type="submit" style={primaryBtn()}>
                 Continue →
@@ -298,19 +342,11 @@ export function InquireModal({ trackingData, onClose }: Props) {
           {/* ── STEP 3: DETAILS (OPTIONAL) ── */}
           {step === 'details' && (
             <form onSubmit={handleDetails}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                <h2 style={{ margin: 0, color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                  Almost there
-                </h2>
-                <span style={{
-                  background: '#F1F5F9', color: '#64748B', border: '1px solid #E2E8F0',
-                  fontFamily: 'Inter, sans-serif', fontSize: '0.68rem', fontWeight: 700,
-                  padding: '2px 8px', borderRadius: 20, letterSpacing: '0.5px',
-                  textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 3,
-                }}>Step 3 of 3</span>
-              </div>
+              <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
+                Almost there
+              </h2>
               <p style={{ margin: '0 0 18px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
-                Name is required. Phone, company and location are optional.
+                Just your name so the seller knows who to reach out to.
               </p>
 
               <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
@@ -332,38 +368,31 @@ export function InquireModal({ trackingData, onClose }: Props) {
                 </div>
               </div>
 
-              <label style={label}>Phone</label>
+              <label style={label}>
+                Mobile{' '}
+                <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
+              </label>
               <input
                 type="tel" placeholder="+1 (555) 000-0000"
                 value={form.phone} onChange={set('phone')}
                 style={{ ...inp, marginBottom: 12 }}
               />
 
-              <label style={label}>Company</label>
-              <input
-                placeholder="Your company name"
-                value={form.company} onChange={set('company')}
-                style={{ ...inp, marginBottom: 12 }}
-              />
+              {!isBusinessEmail(form.email || knownEmail || '') && (
+                <>
+                  <label style={label}>
+                    Company{' '}
+                    <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
+                  </label>
+                  <input
+                    placeholder="Your company name"
+                    value={form.company} onChange={set('company')}
+                    style={{ ...inp, marginBottom: 12 }}
+                  />
+                </>
+              )}
 
-              <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>State</label>
-                  <input
-                    placeholder="CA"
-                    value={form.state} onChange={set('state')}
-                    style={inp}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Zip code</label>
-                  <input
-                    placeholder="90210"
-                    value={form.zip} onChange={set('zip')}
-                    style={inp}
-                  />
-                </div>
-              </div>
+              <div style={{ marginBottom: 20 }} />
 
               <button type="submit" disabled={loading} style={primaryBtn(loading)}>
                 {loading ? 'Sending…' : 'Send Inquiry'}
