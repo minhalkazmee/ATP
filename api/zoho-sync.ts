@@ -24,21 +24,34 @@ async function getZohoToken(): Promise<string> {
 // ─── Fetch all pages of a Zoho module ────────────────────────────────────────
 
 async function fetchZohoModule(token: string, module: string, fields: string): Promise<any[]> {
-  let page = 1;
   const all: any[] = [];
+  let pageToken: string | null = null;
+  let page = 1;
 
   while (true) {
-    const res = await fetch(
-      `https://www.zohoapis.com/crm/v6/${module}?fields=${fields}&page=${page}&per_page=200`,
-      { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
-    );
+    // Use page_token (cursor) once we're past page 10 (2000 records)
+    const url = pageToken
+      ? `https://www.zohoapis.com/crm/v6/${module}?fields=${fields}&per_page=200&page_token=${encodeURIComponent(pageToken)}`
+      : `https://www.zohoapis.com/crm/v6/${module}?fields=${fields}&per_page=200&page=${page}`;
+
+    const res = await fetch(url, { headers: { Authorization: `Zoho-oauthtoken ${token}` } });
     if (res.status === 204) break;
     if (!res.ok) throw new Error(`Zoho ${module} ${res.status}: ${await res.text()}`);
+
     const data = await res.json();
     if (!data.data?.length) break;
     all.push(...data.data);
+
     if (!data.info?.more_records) break;
-    page++;
+
+    // Switch to token-based pagination if provided, otherwise increment page
+    if (data.info?.next_page_token) {
+      pageToken = data.info.next_page_token;
+    } else {
+      page++;
+      // Zoho blocks standard pagination past page 10 — stop if we hit that limit
+      if (page > 10) break;
+    }
   }
 
   return all;
