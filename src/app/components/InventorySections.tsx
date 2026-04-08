@@ -354,7 +354,7 @@ function EmptyState({ message }: { message: string }) {
 function ShowMoreButton({ onClick, remaining, itemLabel = "products" }: { onClick: () => void; remaining: number; itemLabel?: string }) {
   if (remaining <= 0) return null;
   return (
-    <div className="mt-6 flex justify-center">
+    <div className="mt-2 flex justify-center">
       <button
         onClick={onClick}
         className="group flex flex-col items-center gap-1 transition-all hover:opacity-80"
@@ -521,7 +521,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
           </tbody>
         </table>
       </div>
-      <p style={{ fontFamily: font, fontSize: '0.85rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0, textAlign: 'center' }}>
+      <p style={{ fontFamily: font, fontSize: '0.85rem', color: '#9CA3AF', marginTop: 8, marginBottom: 4, textAlign: 'center' }}>
         {filtered.length} products in this category{filtered.length !== data.length ? ' (Filtered)' : ''}
       </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="panels" />
@@ -648,7 +648,7 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
           </tbody>
         </table>
       </div>
-      <p style={{ fontFamily: font, fontSize: '0.85rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0, textAlign: 'center' }}>
+      <p style={{ fontFamily: font, fontSize: '0.85rem', color: '#9CA3AF', marginTop: 8, marginBottom: 4, textAlign: 'center' }}>
         {filtered.length} products in this category{filtered.length !== data.length ? ' (Filtered)' : ''}
       </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="inverters" />
@@ -756,7 +756,7 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
           </tbody>
         </table>
       </div>
-      <p style={{ fontFamily: font, fontSize: '0.85rem', color: '#9CA3AF', marginTop: 10, marginBottom: 0, textAlign: 'center' }}>
+      <p style={{ fontFamily: font, fontSize: '0.85rem', color: '#9CA3AF', marginTop: 8, marginBottom: 4, textAlign: 'center' }}>
         {filtered.length} products in this category{filtered.length !== data.length ? ' (Filtered)' : ''}
       </p>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="items" />
