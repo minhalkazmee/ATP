@@ -453,11 +453,8 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
         <table className="w-full md:min-w-[1200px]">
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 30 }}></th>
-              <th style={thStyle}>
-                Manufacturer{' '}
-                <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filtered.length})</span>
-              </th>
+              <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filtered.length}</th>
+              <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number<span style={thSub}>Click to view datasheet</span></th>
               <th style={thStyle} className={H}>Cell Type</th>
               <SortHeader sup="1">Wp</SortHeader>
@@ -586,11 +583,8 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
         <table className="w-full md:min-w-[1000px]">
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 30 }}></th>
-              <th style={thStyle}>
-                Manufacturer{' '}
-                <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filtered.length})</span>
-              </th>
+              <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filtered.length}</th>
+              <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Type</th>
               <SortHeader>Power</SortHeader>
@@ -698,11 +692,8 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
         <table className="w-full md:min-w-[1000px]">
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 30 }}></th>
-              <th style={thStyle}>
-                Manufacturer{' '}
-                <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filtered.length})</span>
-              </th>
+              <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filtered.length}</th>
+              <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Chemistry</th>
               <SortHeader>Capacity</SortHeader>
@@ -799,11 +790,8 @@ function GenericProductSection({
           <table className="w-full md:min-w-[1000px]">
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: 30 }}></th>
-                <th style={thStyle}>
-                  Manufacturer{' '}
-                  <span style={{ fontWeight: 400, fontSize: '0.65rem', color: '#9CA3AF' }}>({filteredData.length})</span>
-                </th>
+                <th style={{ ...thStyle, width: 30, color: '#9CA3AF', fontWeight: 400, fontSize: '0.65rem' }}>{filteredData.length}</th>
+                <th style={thStyle}>Manufacturer</th>
                 <th style={thStyle} className={H}>Part Number</th>
                 <th style={thStyle} className={H}>Category</th>
                 <SortHeader>Price</SortHeader>
