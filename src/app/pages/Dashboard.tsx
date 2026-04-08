@@ -7,13 +7,9 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Kpis {
-  sessions: number;
-  events: number;
-  inquiries: number;
-  totalLeadValue: number;
-  avgLeadValue: number;
-  zohoLeads: number;
-  zohoLeadValue: number;
+  sessions: number; events: number; inquiries: number;
+  totalLeadValue: number; avgLeadValue: number;
+  zohoLeads: number; zohoLeadValue: number;
 }
 
 interface DashData {
@@ -30,89 +26,80 @@ interface DashData {
   }[];
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+const PIN_KEY    = 'atp_dash_auth';
+const PIN_EXPIRY = 7 * 24 * 60 * 60 * 1000;
+const ORANGE     = '#FF6B00';
+const NAVY       = '#0B2545';
+const SLATE      = '#6B7280';
 
-const ORANGE  = '#FF6B00';
-const NAVY    = '#0B2545';
-const SLATE   = '#64748B';
-const LIGHT   = '#F8FAFC';
-const BORDER  = '#E2E8F0';
-
-const PIN_KEY     = 'atp_dash_auth';
-const PIN_EXPIRY  = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt$(n: number) {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtNum(n: number) {
-  return n.toLocaleString('en-US');
-}
-function shortDate(iso: string) {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-function shortLabel(s: string, max = 22) {
-  return s.length > max ? s.slice(0, max) + '…' : s;
-}
+function fmtN(n: number) { return n.toLocaleString('en-US'); }
+function shortDate(iso: string) { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()}`; }
+function clip(s: string, max = 26) { return s.length > max ? s.slice(0, max) + '…' : s; }
 
 // ─── PIN Gate ─────────────────────────────────────────────────────────────────
 
 function PinGate({ onAuth }: { onAuth: (pin: string) => void }) {
   const [pin, setPin] = useState('');
-  const [err, setErr] = useState(false);
+  const [shake, setShake] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     onAuth(pin);
-    setErr(true);
-    setTimeout(() => setErr(false), 800);
+    setShake(true);
+    setTimeout(() => setShake(false), 500);
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: NAVY, fontFamily: 'Inter, sans-serif',
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 16, padding: '40px 40px 36px',
-        width: 340, boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12,
-            background: 'linear-gradient(135deg,#FF6B00,#FF8533)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px', fontSize: '1.4rem',
-          }}>📊</div>
-          <h1 style={{ margin: 0, color: NAVY, fontSize: '1.2rem', fontWeight: 700 }}>Analytics Dashboard</h1>
-          <p style={{ margin: '6px 0 0', color: SLATE, fontSize: '0.82rem' }}>Enter your PIN to continue</p>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif' }}>
+      {/* Navbar */}
+      <nav style={{ background: '#fff', borderBottom: '1px solid #E5E7EB', height: 64, display: 'flex', alignItems: 'center', padding: '0 20px' }}>
+        <img src="https://www.sunhub.com/assets/images/revamp/logo.svg" alt="Sunhub" style={{ height: 32 }} />
+      </nav>
+
+      {/* Body */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F9FAFB', padding: 24 }}>
+        <div style={{
+          background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.06)', width: '100%', maxWidth: 360,
+          overflow: 'hidden',
+        }}>
+          {/* Card header */}
+          <div style={{ background: '#EBF3FF', borderBottom: '1px solid #E5E7EB', padding: '12px 20px' }}>
+            <p style={{ margin: 0, color: NAVY, fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              Insights — Restricted Access
+            </p>
+          </div>
+          <div style={{ padding: '28px 24px 24px' }}>
+            <h2 style={{ margin: '0 0 6px', color: NAVY, fontWeight: 700, fontSize: '1.15rem', letterSpacing: '-0.2px' }}>Enter PIN</h2>
+            <p style={{ margin: '0 0 20px', color: SLATE, fontSize: '0.83rem' }}>This page is for internal use only.</p>
+            <form onSubmit={submit}>
+              <input
+                type="password" placeholder="••••••" autoFocus value={pin}
+                onChange={e => setPin(e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  border: `1.5px solid ${shake ? '#EF4444' : '#E5E7EB'}`,
+                  borderRadius: 8, padding: '10px 14px',
+                  fontSize: '1.1rem', letterSpacing: 6, textAlign: 'center',
+                  outline: 'none', fontFamily: 'Inter, sans-serif', color: NAVY,
+                  transition: 'border-color 0.2s', marginBottom: 12,
+                }}
+              />
+              <button type="submit" style={{
+                width: '100%', padding: '10px 0', border: 'none', borderRadius: 8,
+                background: 'linear-gradient(135deg,#FF6B00,#FF8533)',
+                color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700,
+                fontSize: '0.88rem', cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(255,107,0,0.22)',
+              }}>Unlock →</button>
+            </form>
+          </div>
         </div>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="password" placeholder="PIN" autoFocus value={pin}
-            onChange={e => setPin(e.target.value)}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              border: `1.5px solid ${err ? '#EF4444' : BORDER}`,
-              borderRadius: 9, padding: '11px 14px',
-              fontSize: '1.1rem', letterSpacing: 6,
-              outline: 'none', textAlign: 'center',
-              fontFamily: 'Inter, sans-serif', color: NAVY,
-              transition: 'border-color 0.2s',
-            }}
-          />
-          <button type="submit" style={{
-            marginTop: 14, width: '100%', padding: '11px 0',
-            background: 'linear-gradient(135deg,#FF6B00,#FF8533)',
-            border: 'none', borderRadius: 9, color: '#fff',
-            fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer',
-            fontFamily: 'Inter, sans-serif',
-          }}>
-            Unlock →
-          </button>
-        </form>
       </div>
     </div>
   );
@@ -122,36 +109,41 @@ function PinGate({ onAuth }: { onAuth: (pin: string) => void }) {
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div style={{
-      background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12,
-      padding: '20px 22px', flex: 1, minWidth: 140,
-    }}>
-      <p style={{ margin: 0, color: SLATE, fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
-      <p style={{ margin: '8px 0 0', color: NAVY, fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.5px' }}>{value}</p>
-      {sub && <p style={{ margin: '3px 0 0', color: SLATE, fontSize: '0.75rem' }}>{sub}</p>}
+    <div style={{ flex: 1, minWidth: 140, background: '#FAFAFA', borderRadius: 8, border: '1px solid #E5E7EB', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+      <div style={{ background: '#EBF3FF', borderBottom: '1px solid #E5E7EB', padding: '7px 14px' }}>
+        <p style={{ margin: 0, color: NAVY, fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
+      </div>
+      <div style={{ padding: '14px 14px 12px' }}>
+        <p style={{ margin: 0, color: NAVY, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1 }}>{value}</p>
+        {sub && <p style={{ margin: '5px 0 0', color: SLATE, fontSize: '0.72rem' }}>{sub}</p>}
+      </div>
     </div>
   );
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
+// ─── Section Card ─────────────────────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children, style }: { title: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '22px 24px' }}>
-      <h3 style={{ margin: '0 0 18px', color: NAVY, fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{title}</h3>
-      {children}
+    <div style={{ background: '#FAFAFA', border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', ...style }}>
+      <div style={{ background: '#EBF3FF', borderBottom: '1px solid #E5E7EB', padding: '8px 16px' }}>
+        <p style={{ margin: 0, color: NAVY, fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</p>
+      </div>
+      <div style={{ padding: '18px 16px', background: '#fff' }}>
+        {children}
+      </div>
     </div>
   );
 }
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 
-function ChartTip({ active, payload, label, prefix = '' }: any) {
+function ChartTip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: NAVY, color: '#fff', borderRadius: 8, padding: '8px 13px', fontSize: '0.8rem', fontFamily: 'Inter, sans-serif' }}>
-      <p style={{ margin: 0, fontWeight: 600 }}>{label}</p>
-      <p style={{ margin: '3px 0 0' }}>{prefix}{payload[0].value?.toLocaleString()}</p>
+    <div style={{ background: NAVY, color: '#fff', borderRadius: 6, padding: '7px 12px', fontSize: '0.78rem', fontFamily: 'Inter, sans-serif' }}>
+      {label && <p style={{ margin: '0 0 2px', fontWeight: 600 }}>{label}</p>}
+      <p style={{ margin: 0 }}>{payload[0].value?.toLocaleString()}</p>
     </div>
   );
 }
@@ -159,15 +151,14 @@ function ChartTip({ active, payload, label, prefix = '' }: any) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const [pin, setPin]     = useState<string | null>(null);
-  const [range, setRange] = useState('30');
-  const [data, setData]   = useState<DashData | null>(null);
+  const [pin, setPin]         = useState<string | null>(null);
+  const [range, setRange]     = useState('30');
+  const [data, setData]       = useState<DashData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
-  // Check stored auth on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(PIN_KEY);
@@ -179,211 +170,209 @@ export default function Dashboard() {
   }, []);
 
   const load = useCallback(async (p: string, r: string) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const res = await fetch(`/api/dashboard?pin=${encodeURIComponent(p)}&range=${r}`);
       if (res.status === 401) { setPin(null); localStorage.removeItem(PIN_KEY); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
   }, []);
 
   function handleAuth(p: string) {
     localStorage.setItem(PIN_KEY, JSON.stringify({ p, ts: Date.now() }));
-    setPin(p);
-    load(p, range);
+    setPin(p); load(p, range);
   }
 
-  useEffect(() => {
-    if (pin) load(pin, range);
-  }, [pin, range, load]);
+  useEffect(() => { if (pin) load(pin, range); }, [pin, range, load]);
 
   async function syncZoho() {
     if (!pin) return;
-    setSyncing(true);
-    setSyncMsg('');
+    setSyncing(true); setSyncMsg('');
     try {
-      const res = await fetch('/api/zoho-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
-      });
+      const res = await fetch('/api/zoho-sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
       const j = await res.json();
-      if (j.ok) {
-        setSyncMsg(`Synced ${j.synced} leads`);
-        await load(pin, range);
-      } else {
-        setSyncMsg(`Error: ${j.error}`);
-      }
-    } catch (e: any) {
-      setSyncMsg(`Error: ${e.message}`);
-    } finally {
-      setSyncing(false);
-      setTimeout(() => setSyncMsg(''), 4000);
-    }
+      setSyncMsg(j.ok ? `✓ Synced ${j.synced} leads` : `Error: ${j.error}`);
+      if (j.ok) await load(pin, range);
+    } catch (e: any) { setSyncMsg(`Error: ${e.message}`); }
+    finally { setSyncing(false); setTimeout(() => setSyncMsg(''), 4000); }
   }
 
   if (!pin) return <PinGate onAuth={handleAuth} />;
 
-  const bg = '#F1F5F9';
+  const thStyle: React.CSSProperties = {
+    padding: '7px 12px', textAlign: 'left', color: SLATE, fontWeight: 700,
+    fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.4px',
+    borderBottom: '2px solid #E5E7EB', whiteSpace: 'nowrap',
+  };
+  const tdStyle: React.CSSProperties = {
+    padding: '9px 12px', borderBottom: '1px solid #F3F4F6',
+    fontFamily: 'Inter, sans-serif', fontSize: '0.8rem', color: NAVY,
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: bg, fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: 'Inter, sans-serif' }}>
 
-      {/* Header */}
-      <div style={{
-        background: NAVY, color: '#fff',
-        padding: '0 32px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        height: 56, position: 'sticky', top: 0, zIndex: 10,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+      {/* ── Navbar ── */}
+      <nav style={{
+        background: '#fff', borderBottom: '1px solid #E5E7EB',
+        height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 24px', position: 'sticky', top: 0, zIndex: 50,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: '1.1rem' }}>📊</span>
-          <span style={{ fontWeight: 700, fontSize: '0.95rem', letterSpacing: '-0.2px' }}>SunHub Analytics</span>
+        {/* Left: logo + title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <a href="/">
+            <img src="https://www.sunhub.com/assets/images/revamp/logo.svg" alt="Sunhub" style={{ height: 30 }} />
+          </a>
+          <div style={{ width: 1, height: 20, background: '#E5E7EB' }} />
+          <span style={{ color: NAVY, fontWeight: 700, fontSize: '0.9rem', letterSpacing: '-0.2px' }}>Insights</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Range selector */}
+
+        {/* Right: controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Range pills */}
           {(['7', '30', '90'] as const).map(r => (
             <button key={r} onClick={() => setRange(r)} style={{
-              padding: '4px 12px', borderRadius: 20, cursor: 'pointer',
+              padding: '5px 14px', borderRadius: 20, cursor: 'pointer',
               fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', fontWeight: 600,
-              border: range === r ? 'none' : `1px solid rgba(255,255,255,0.2)`,
-              background: range === r ? ORANGE : 'transparent',
-              color: '#fff',
+              border: range === r ? 'none' : '1px solid #E5E7EB',
+              background: range === r ? 'linear-gradient(135deg,#FF6B00,#FF8533)' : '#fff',
+              color: range === r ? '#fff' : SLATE,
+              boxShadow: range === r ? '0 2px 8px rgba(255,107,0,0.2)' : 'none',
             }}>{r}d</button>
           ))}
+
           {/* Sync Zoho */}
           <button onClick={syncZoho} disabled={syncing} style={{
             padding: '5px 14px', borderRadius: 20, cursor: syncing ? 'not-allowed' : 'pointer',
-            background: syncing ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.25)',
-            color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', fontWeight: 600,
+            border: '1px solid #E5E7EB', background: '#fff',
+            color: SLATE, fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', fontWeight: 600,
           }}>
             {syncing ? 'Syncing…' : '⟳ Sync Zoho'}
           </button>
-          {syncMsg && <span style={{ fontSize: '0.78rem', color: syncMsg.startsWith('Error') ? '#FCA5A5' : '#86EFAC' }}>{syncMsg}</span>}
+          {syncMsg && (
+            <span style={{ fontSize: '0.75rem', color: syncMsg.startsWith('Error') ? '#EF4444' : '#16A34A', fontWeight: 600 }}>
+              {syncMsg}
+            </span>
+          )}
+
           {/* Back */}
           <a href="/" style={{
-            padding: '4px 12px', borderRadius: 20,
-            border: '1px solid rgba(255,255,255,0.2)',
-            color: '#fff', textDecoration: 'none',
-            fontFamily: 'Inter, sans-serif', fontSize: '0.78rem',
-          }}>← Site</a>
+            padding: '5px 14px', borderRadius: 20,
+            border: '1px solid #E5E7EB', background: '#fff',
+            color: SLATE, textDecoration: 'none',
+            fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', fontWeight: 500,
+          }}>← Inventory</a>
         </div>
-      </div>
+      </nav>
 
-      {/* Body */}
-      <div style={{ padding: '28px 32px', maxWidth: 1400, margin: '0 auto' }}>
+      {/* ── Body ── */}
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '28px 24px' }}>
 
         {loading && !data && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: SLATE, fontSize: '0.9rem' }}>
-            Loading analytics…
+          <div style={{ textAlign: 'center', padding: '80px 0', color: SLATE, fontSize: '0.88rem' }}>
+            Loading insights…
           </div>
         )}
 
         {error && (
-          <div style={{
-            background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10,
-            padding: '14px 18px', color: '#DC2626', fontSize: '0.85rem', marginBottom: 20,
-          }}>
-            Error: {error}
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 16px', color: '#DC2626', fontSize: '0.83rem', marginBottom: 20 }}>
+            {error}
           </div>
         )}
 
         {data && (
           <>
-            {/* KPI Row */}
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 24 }}>
-              <KpiCard label="Sessions"         value={fmtNum(data.kpis.sessions)}                           sub={`last ${range} days`} />
-              <KpiCard label="Events"           value={fmtNum(data.kpis.events)}                             sub={`last ${range} days`} />
-              <KpiCard label="Inquiries"        value={fmtNum(data.kpis.inquiries)}                          sub={`last ${range} days`} />
-              <KpiCard label="Total Lead Value" value={fmt$(data.kpis.totalLeadValue)}                       sub="inquiries with qty" />
-              <KpiCard label="Avg Lead Value"   value={fmt$(data.kpis.avgLeadValue)}                         sub="per inquiry" />
-              <KpiCard label="Zoho Leads"       value={fmtNum(data.kpis.zohoLeads)}                          sub="all time" />
-              <KpiCard label="Zoho Lead Value"  value={fmt$(data.kpis.zohoLeadValue)}                        sub="all time" />
+            {/* Page heading */}
+            <div style={{ marginBottom: 24 }}>
+              <h1 style={{ margin: 0, color: NAVY, fontWeight: 700, fontSize: '1.3rem', letterSpacing: '-0.3px' }}>
+                Site Insights
+              </h1>
+              <p style={{ margin: '4px 0 0', color: SLATE, fontSize: '0.82rem' }}>Last {range} days · {fmtN(data.kpis.events)} events from {fmtN(data.kpis.sessions)} sessions</p>
             </div>
 
-            {/* Activity + Funnel row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
+            {/* ── KPI row ── */}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+              <KpiCard label="Sessions"         value={fmtN(data.kpis.sessions)}           sub={`last ${range}d`} />
+              <KpiCard label="Events"           value={fmtN(data.kpis.events)}             sub={`last ${range}d`} />
+              <KpiCard label="Inquiries"        value={fmtN(data.kpis.inquiries)}          sub={`last ${range}d`} />
+              <KpiCard label="Total Lead Value" value={fmt$(data.kpis.totalLeadValue)}     sub="from inquiries w/ qty" />
+              <KpiCard label="Avg Lead Value"   value={fmt$(data.kpis.avgLeadValue)}       sub="per inquiry" />
+              <KpiCard label="Zoho Leads"       value={fmtN(data.kpis.zohoLeads)}         sub="all time" />
+              <KpiCard label="Zoho Lead Value"  value={fmt$(data.kpis.zohoLeadValue)}     sub="all time" />
+            </div>
 
-              {/* Events per day */}
-              <Section title={`Events per Day — Last ${range}d`}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={data.dailyEvents} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
-                    <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fontSize: 11, fill: SLATE }} />
-                    <YAxis tick={{ fontSize: 11, fill: SLATE }} />
+            {/* ── Activity + Funnel ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 14 }}>
+
+              <Card title={`Events per Day — Last ${range}d`}>
+                <ResponsiveContainer width="100%" height={210}>
+                  <LineChart data={data.dailyEvents} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                    <XAxis dataKey="date" tickFormatter={shortDate} tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
+                    <YAxis tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
                     <Tooltip content={<ChartTip />} />
                     <Line type="monotone" dataKey="count" stroke={ORANGE} strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: ORANGE }} />
                   </LineChart>
                 </ResponsiveContainer>
-              </Section>
+              </Card>
 
-              {/* Funnel */}
-              <Section title="Conversion Funnel">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.funnel} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER} horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: SLATE }} />
-                    <YAxis type="category" dataKey="step" tick={{ fontSize: 10, fill: SLATE }} width={100} />
+              <Card title="Conversion Funnel">
+                <ResponsiveContainer width="100%" height={210}>
+                  <BarChart data={data.funnel} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
+                    <YAxis type="category" dataKey="step" tick={{ fontSize: 10, fill: SLATE, fontFamily: 'Inter' }} width={110} />
                     <Tooltip content={<ChartTip />} />
                     <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                       {data.funnel.map((_, i) => (
-                        <Cell key={i} fill={i === data.funnel.length - 1 ? ORANGE : `rgba(255,107,0,${0.3 + i * 0.15})`} />
+                        <Cell key={i} fill={i === data.funnel.length - 1 ? ORANGE : `rgba(255,107,0,${0.25 + i * 0.18})`} />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </Section>
+              </Card>
             </div>
 
-            {/* Category + Scroll row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            {/* ── Category + Scroll ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
 
-              {/* Category breakdown */}
-              <Section title="Expansions by Category">
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={data.categoryBreakdown} margin={{ top: 5, right: 10, left: -10, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
-                    <XAxis dataKey="category" tick={{ fontSize: 10, fill: SLATE }} angle={-30} textAnchor="end" />
-                    <YAxis tick={{ fontSize: 11, fill: SLATE }} />
+              <Card title="Expansions by Category">
+                <ResponsiveContainer width="100%" height={190}>
+                  <BarChart data={data.categoryBreakdown} margin={{ top: 4, right: 8, left: -12, bottom: 36 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                    <XAxis dataKey="category" tick={{ fontSize: 10, fill: SLATE, fontFamily: 'Inter' }} angle={-30} textAnchor="end" />
+                    <YAxis tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
                     <Tooltip content={<ChartTip />} />
                     <Bar dataKey="count" fill={ORANGE} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              </Section>
+              </Card>
 
-              {/* Scroll depth */}
-              <Section title="Scroll Depth (sessions reaching milestone)">
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={data.scrollDepth} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
-                    <XAxis dataKey="milestone" tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: SLATE }} />
-                    <YAxis tick={{ fontSize: 11, fill: SLATE }} />
+              <Card title="Scroll Depth (sessions per milestone)">
+                <ResponsiveContainer width="100%" height={190}>
+                  <BarChart data={data.scrollDepth} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                    <XAxis dataKey="milestone" tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
+                    <YAxis tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
                     <Tooltip content={<ChartTip />} />
                     <Bar dataKey="sessions" fill={NAVY} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              </Section>
+              </Card>
             </div>
 
-            {/* Top Products + Top Filters row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, marginBottom: 16 }}>
+            {/* ── Top Products + Filters ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14, marginBottom: 14 }}>
 
-              {/* Top Products */}
-              <Section title="Top Products">
+              <Card title="Top Products">
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ borderBottom: `2px solid ${BORDER}` }}>
-                        {['Product', 'SKU', 'Expands', 'Inquiries', 'Conv %', 'Lead Value'].map(h => (
-                          <th key={h} style={{ padding: '6px 10px', textAlign: h === 'Product' ? 'left' : 'right', color: SLATE, fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
+                      <tr>
+                        {['Product', 'SKU', 'Expands', 'Inquiries', 'Conv %', 'Lead Value'].map((h, i) => (
+                          <th key={h} style={{ ...thStyle, textAlign: i > 1 ? 'right' : 'left' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -391,101 +380,107 @@ export default function Dashboard() {
                       {data.topProducts.map((p, i) => {
                         const conv = p.expands > 0 ? ((p.inquiries / p.expands) * 100).toFixed(1) : '—';
                         return (
-                          <tr key={p.sku} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? '#fff' : LIGHT }}>
-                            <td style={{ padding: '8px 10px', color: NAVY, fontWeight: 500, maxWidth: 200 }} title={p.name}>{shortLabel(p.name, 28)}</td>
-                            <td style={{ padding: '8px 10px', color: SLATE, textAlign: 'right', fontFamily: 'monospace', fontSize: '0.75rem' }}>{p.sku}</td>
-                            <td style={{ padding: '8px 10px', color: NAVY, textAlign: 'right', fontWeight: 600 }}>{fmtNum(p.expands)}</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                              <span style={{
-                                background: p.inquiries > 0 ? 'rgba(255,107,0,0.1)' : 'transparent',
-                                color: p.inquiries > 0 ? ORANGE : SLATE,
-                                padding: '2px 8px', borderRadius: 20, fontWeight: 700,
-                              }}>{fmtNum(p.inquiries)}</span>
+                          <tr key={p.sku} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                            <td style={tdStyle} title={p.name}>{clip(p.name, 30)}</td>
+                            <td style={{ ...tdStyle, color: SLATE, fontFamily: 'monospace', fontSize: '0.73rem' }}>{p.sku}</td>
+                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>{fmtN(p.expands)}</td>
+                            <td style={{ ...tdStyle, textAlign: 'right' }}>
+                              {p.inquiries > 0
+                                ? <span style={{ background: 'rgba(255,107,0,0.1)', color: ORANGE, padding: '2px 8px', borderRadius: 20, fontWeight: 700, fontSize: '0.75rem' }}>{fmtN(p.inquiries)}</span>
+                                : <span style={{ color: '#D1D5DB' }}>—</span>}
                             </td>
-                            <td style={{ padding: '8px 10px', color: SLATE, textAlign: 'right' }}>{conv}{conv !== '—' ? '%' : ''}</td>
-                            <td style={{ padding: '8px 10px', color: p.leadValue > 0 ? '#16A34A' : SLATE, textAlign: 'right', fontWeight: p.leadValue > 0 ? 700 : 400 }}>
+                            <td style={{ ...tdStyle, textAlign: 'right', color: SLATE }}>{conv}{conv !== '—' ? '%' : ''}</td>
+                            <td style={{ ...tdStyle, textAlign: 'right', color: p.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: p.leadValue > 0 ? 700 : 400 }}>
                               {p.leadValue > 0 ? fmt$(p.leadValue) : '—'}
                             </td>
                           </tr>
                         );
                       })}
                       {data.topProducts.length === 0 && (
-                        <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: SLATE }}>No data yet</td></tr>
+                        <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>No data yet</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
-              </Section>
+              </Card>
 
-              {/* Top Filters */}
-              <Section title="Most Used Filters">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Card title="Most Used Filters">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {data.topFilters.map((f, i) => {
                     const max = data.topFilters[0]?.count ?? 1;
                     return (
                       <div key={i}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                          <span style={{ fontSize: '0.78rem', color: NAVY }}>{shortLabel(f.label, 30)}</span>
-                          <span style={{ fontSize: '0.78rem', color: SLATE, fontWeight: 600 }}>{f.count}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: '0.78rem', color: NAVY, fontWeight: 500 }}>{clip(f.label, 32)}</span>
+                          <span style={{ fontSize: '0.75rem', color: SLATE, fontWeight: 600 }}>{f.count}</span>
                         </div>
-                        <div style={{ height: 5, background: BORDER, borderRadius: 3 }}>
-                          <div style={{ height: '100%', width: `${(f.count / max) * 100}%`, background: ORANGE, borderRadius: 3, transition: 'width 0.6s' }} />
+                        <div style={{ height: 4, background: '#F3F4F6', borderRadius: 3 }}>
+                          <div style={{ height: '100%', width: `${(f.count / max) * 100}%`, background: 'linear-gradient(90deg,#FF6B00,#FF8533)', borderRadius: 3 }} />
                         </div>
                       </div>
                     );
                   })}
-                  {data.topFilters.length === 0 && <p style={{ color: SLATE, fontSize: '0.82rem', margin: 0 }}>No filter data yet</p>}
+                  {data.topFilters.length === 0 && <p style={{ color: '#D1D5DB', fontSize: '0.82rem', margin: 0 }}>No filter data yet</p>}
                 </div>
-              </Section>
+              </Card>
             </div>
 
-            {/* Lead Pipeline */}
-            <Section title="Lead Pipeline (Zoho)">
+            {/* ── Lead Pipeline ── */}
+            <Card title="Lead Pipeline — Zoho CRM">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <span style={{ fontSize: '0.8rem', color: SLATE }}>
-                  {data.recentLeads.length} leads shown · Total value: <strong style={{ color: NAVY }}>{fmt$(data.kpis.zohoLeadValue)}</strong>
+                  {data.recentLeads.length} leads · Total: <strong style={{ color: NAVY }}>{fmt$(data.kpis.zohoLeadValue)}</strong>
                 </span>
+                <button onClick={syncZoho} disabled={syncing} style={{
+                  padding: '5px 14px', borderRadius: 20, cursor: syncing ? 'not-allowed' : 'pointer',
+                  border: '1px solid #E5E7EB', background: '#FAFAFA',
+                  color: SLATE, fontFamily: 'Inter, sans-serif', fontSize: '0.75rem', fontWeight: 600,
+                }}>
+                  {syncing ? 'Syncing…' : '⟳ Sync Zoho'}
+                </button>
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: `2px solid ${BORDER}` }}>
-                      {['Name / Email', 'Company', 'Product', 'Lead Value', 'Status', 'Created'].map(h => (
-                        <th key={h} style={{ padding: '6px 10px', textAlign: h === 'Lead Value' ? 'right' : 'left', color: SLATE, fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
+                    <tr>
+                      {['Name / Email', 'Company', 'Product', 'Lead Value', 'Status', 'Created'].map((h, i) => (
+                        <th key={h} style={{ ...thStyle, textAlign: h === 'Lead Value' ? 'right' : 'left' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {data.recentLeads.map((l, i) => (
-                      <tr key={l.zohoId} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? '#fff' : LIGHT }}>
-                        <td style={{ padding: '8px 10px' }}>
-                          <p style={{ margin: 0, color: NAVY, fontWeight: 500 }}>{l.name || '—'}</p>
+                      <tr key={l.zohoId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                        <td style={tdStyle}>
+                          <p style={{ margin: 0, fontWeight: 600 }}>{l.name || '—'}</p>
                           <p style={{ margin: '1px 0 0', color: SLATE, fontSize: '0.73rem' }}>{l.email}</p>
                         </td>
-                        <td style={{ padding: '8px 10px', color: SLATE }}>{l.company || '—'}</td>
-                        <td style={{ padding: '8px 10px', color: NAVY, maxWidth: 160 }} title={l.product}>{shortLabel(l.product || '—', 22)}</td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', color: l.leadValue > 0 ? '#16A34A' : SLATE, fontWeight: l.leadValue > 0 ? 700 : 400 }}>
+                        <td style={{ ...tdStyle, color: SLATE }}>{l.company || '—'}</td>
+                        <td style={{ ...tdStyle }} title={l.product}>{clip(l.product || '—', 24)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', color: l.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: l.leadValue > 0 ? 700 : 400 }}>
                           {l.leadValue > 0 ? fmt$(l.leadValue) : '—'}
                         </td>
-                        <td style={{ padding: '8px 10px' }}>
+                        <td style={{ ...tdStyle }}>
                           <span style={{
-                            padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700,
+                            padding: '3px 10px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700,
                             background: l.status === 'Converted' ? '#DCFCE7' : l.status === 'Lost' ? '#FEF2F2' : '#FFF7ED',
                             color: l.status === 'Converted' ? '#16A34A' : l.status === 'Lost' ? '#DC2626' : ORANGE,
                           }}>{l.status || 'New'}</span>
                         </td>
-                        <td style={{ padding: '8px 10px', color: SLATE }}>
+                        <td style={{ ...tdStyle, color: SLATE }}>
                           {l.createdAt ? new Date(l.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—'}
                         </td>
                       </tr>
                     ))}
                     {data.recentLeads.length === 0 && (
-                      <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: SLATE }}>No leads synced yet — click "Sync Zoho" above</td></tr>
+                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>
+                        No leads synced yet — click "Sync Zoho" to import
+                      </td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
-            </Section>
+            </Card>
           </>
         )}
       </div>
