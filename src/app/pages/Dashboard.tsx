@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
+import { DayPicker, type DateRange } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -162,24 +164,34 @@ function ChartTip({ active, payload, label }: any) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-function toDateStr(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-function daysAgoStr(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return toDateStr(d);
+function toDateStr(d: Date) { return d.toISOString().slice(0, 10); }
+function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
+function fmtDisplay(d?: Date) {
+  if (!d) return '';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function Dashboard() {
-  const [pin, setPin]         = useState<string | null>(null);
-  const [dateFrom, setDateFrom] = useState(() => daysAgoStr(30));
-  const [dateTo, setDateTo]     = useState(() => toDateStr(new Date()));
-  const [data, setData]       = useState<DashData | null>(null);
+  const [pin, setPin]       = useState<string | null>(null);
+  const [range, setRange]   = useState<DateRange>({ from: daysAgo(30), to: new Date() });
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const [data, setData]     = useState<DashData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError]   = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
+
+  // Close picker on outside click
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
 
   useEffect(() => {
     try {
@@ -204,15 +216,24 @@ export default function Dashboard() {
 
   function handleAuth(p: string) {
     localStorage.setItem(PIN_KEY, JSON.stringify({ p, ts: Date.now() }));
-    setPin(p); load(p, dateFrom, dateTo);
+    setPin(p);
+    load(p, toDateStr(range.from ?? daysAgo(30)), toDateStr(range.to ?? new Date()));
   }
 
-  useEffect(() => { if (pin) load(pin, dateFrom, dateTo); }, [pin, dateFrom, dateTo, load]);
+  // Load when range has both dates selected
+  useEffect(() => {
+    if (pin && range.from && range.to) {
+      load(pin, toDateStr(range.from), toDateStr(range.to));
+    }
+  }, [pin, range.from, range.to, load]);
 
   function applyPreset(days: number) {
-    setDateFrom(daysAgoStr(days));
-    setDateTo(toDateStr(new Date()));
+    setRange({ from: daysAgo(days), to: new Date() });
+    setPickerOpen(false);
   }
+
+  const dateFrom = range.from ? toDateStr(range.from) : '';
+  const dateTo   = range.to   ? toDateStr(range.to)   : '';
 
   async function syncZoho() {
     if (!pin) return;
@@ -221,7 +242,7 @@ export default function Dashboard() {
       const res = await fetch('/api/zoho-sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
       const j = await res.json();
       setSyncMsg(j.ok ? `✓ ${j.leads} leads, ${j.deals} deals` : `Error: ${j.error}`);
-      if (j.ok) await load(pin, dateFrom, dateTo);
+      if (j.ok) await load(pin, toDateStr(range.from ?? daysAgo(30)), toDateStr(range.to ?? new Date()));
     } catch (e: any) { setSyncMsg(`Error: ${e.message}`); }
     finally { setSyncing(false); setTimeout(() => setSyncMsg(''), 4000); }
   }
@@ -258,21 +279,65 @@ export default function Dashboard() {
 
         {/* Right: controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Preset pills */}
-          {[{ label: '7d', days: 7 }, { label: '30d', days: 30 }, { label: '90d', days: 90 }, { label: 'All', days: 3650 }].map(({ label, days }) => (
-            <button key={label} onClick={() => applyPreset(days)} style={{
-              padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif', fontSize: '0.75rem', fontWeight: 600,
-              border: '1px solid #E5E7EB', background: '#fff', color: SLATE,
-            }}>{label}</button>
-          ))}
-          {/* Date range inputs */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '3px 10px' }}>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', color: NAVY, outline: 'none', cursor: 'pointer' }} />
-            <span style={{ color: '#D1D5DB', fontSize: '0.75rem' }}>to</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontFamily: 'Inter, sans-serif', fontSize: '0.78rem', color: NAVY, outline: 'none', cursor: 'pointer' }} />
+
+          {/* Date range picker */}
+          <div ref={pickerRef} style={{ position: 'relative' }}>
+            <button onClick={() => setPickerOpen(o => !o)} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '5px 14px', borderRadius: 8, cursor: 'pointer',
+              border: `1.5px solid ${pickerOpen ? ORANGE : '#E5E7EB'}`,
+              background: '#fff', fontFamily: 'Inter, sans-serif',
+              fontSize: '0.78rem', fontWeight: 500, color: NAVY,
+              transition: 'border-color 0.15s',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                <rect x="1" y="2" width="14" height="13" rx="2" stroke={SLATE} strokeWidth="1.5"/>
+                <path d="M1 6h14" stroke={SLATE} strokeWidth="1.5"/>
+                <path d="M5 1v2M11 1v2" stroke={SLATE} strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              {range.from && range.to
+                ? `${fmtDisplay(range.from)} - ${fmtDisplay(range.to)}`
+                : range.from ? fmtDisplay(range.from) : 'Select range'}
+            </button>
+
+            {pickerOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 100,
+                background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                padding: '12px 12px 8px',
+              }}>
+                {/* Preset shortcuts inside the dropdown */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #F3F4F6' }}>
+                  {[{ label: 'Last 7d', days: 7 }, { label: 'Last 30d', days: 30 }, { label: 'Last 90d', days: 90 }, { label: 'All time', days: 3650 }].map(({ label, days }) => (
+                    <button key={label} onClick={() => applyPreset(days)} style={{
+                      padding: '3px 10px', borderRadius: 20, cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif', fontSize: '0.72rem', fontWeight: 600,
+                      border: '1px solid #E5E7EB', background: '#F9FAFB', color: SLATE,
+                    }}>{label}</button>
+                  ))}
+                </div>
+                <DayPicker
+                  mode="range"
+                  selected={range}
+                  onSelect={(r) => {
+                    if (r) {
+                      setRange(r);
+                      if (r.from && r.to) setPickerOpen(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  styles={{
+                    root: { fontFamily: 'Inter, sans-serif', fontSize: '0.82rem', margin: 0 },
+                  }}
+                  modifiersStyles={{
+                    selected: { background: ORANGE, color: '#fff', borderRadius: 4 },
+                    range_middle: { background: 'rgba(255,107,0,0.1)', color: NAVY, borderRadius: 0 },
+                    today: { fontWeight: 700, color: ORANGE },
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Sync Zoho */}
