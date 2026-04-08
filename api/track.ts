@@ -160,7 +160,7 @@ async function createZohoLead(
     data.message ? `\nMessage: ${String(data.message)}` : '',
   ].filter(Boolean).join('\n');
 
-  const leadValueNum = rQty > 0 && uPrice > 0 ? (rQty * uPrice).toFixed(2) : null;
+  const leadValueNum = rQty > 0 && uPrice > 0 ? `$${(rQty * uPrice).toFixed(2)}` : null;
 
   const lead: Record<string, unknown> = {
     Last_Name:           contact.lastName  || 'Unknown',
