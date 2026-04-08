@@ -320,7 +320,7 @@ export default function Dashboard() {
               <KpiCard label="Total Revenue"    value={fmt$(data.kpis.totalRevenue)}       sub="closed won deals" />
               <KpiCard label="Closed Deals"     value={fmtN(data.kpis.closedDeals)}        sub="won" />
               <KpiCard label="Avg Deal Value"   value={fmt$(data.kpis.avgDealValue)}       sub="per closed deal" />
-              <KpiCard label="Pipeline Value"   value={fmt$(data.kpis.pipelineValue)}      sub={`${fmtN(data.kpis.openDeals)} open deals`} />
+              <KpiCard label="Pipeline Value"   value={fmt$(data.kpis.pipelineValue)}      sub={`${fmtN(data.kpis.openDeals)} open deals (Zoho Deals module)`} />
               <KpiCard label="Lost Deals"       value={fmtN(data.kpis.lostDeals)}         sub="closed lost" />
               <KpiCard label="Win Rate"         value={data.kpis.closedDeals + data.kpis.lostDeals > 0 ? `${Math.round((data.kpis.closedDeals / (data.kpis.closedDeals + data.kpis.lostDeals)) * 100)}%` : '—'} sub="won / (won + lost)" />
             </div>

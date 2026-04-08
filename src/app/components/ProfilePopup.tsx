@@ -201,7 +201,8 @@ export function ProfilePopup({ onClose }: Props) {
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem('atp_profile_dismissed', '1');
+    // Only suppress for this session — show again on next visit until completed
+    sessionStorage.setItem('atp_profile_dismissed', '1');
     onClose();
   };
 

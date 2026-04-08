@@ -72,10 +72,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const alreadyDone =
-      localStorage.getItem('atp_profile') ||
-      localStorage.getItem('atp_profile_dismissed');
-    if (!alreadyDone) {
+    // Only permanently skip if user already completed the profile
+    // Dismissing (X) only suppresses for the current session
+    const completed  = localStorage.getItem('atp_profile');
+    const dismissed  = sessionStorage.getItem('atp_profile_dismissed');
+    if (!completed && !dismissed) {
       const t = setTimeout(() => setProfileOpen(true), 30000);
       return () => clearTimeout(t);
     }
