@@ -96,27 +96,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { step: 'Inquiry Submitted', key: 'inquiry_submitted',         count: funnelCounts['inquiry_submitted'] ?? 0 },
     ];
 
-    // ── Top products ──────────────────────────────────────────────────────────
-    const productMap: Record<string, { sku: string; name: string; expands: number; inquiries: number; leadValue: number }> = {};
-
+    // ── Top expanded products ─────────────────────────────────────────────────
+    const expandMap: Record<string, { sku: string; name: string; count: number; lastExpandedAt: string }> = {};
     for (const e of allEvents) {
       if (e.event_type === 'product_expand' && e.properties?.sku) {
         const sku = String(e.properties.sku);
-        if (!productMap[sku]) productMap[sku] = { sku, name: String(e.properties.name ?? sku), expands: 0, inquiries: 0, leadValue: 0 };
-        productMap[sku].expands++;
+        if (!expandMap[sku]) expandMap[sku] = { sku, name: String(e.properties.name ?? sku), count: 0, lastExpandedAt: e.created_at };
+        expandMap[sku].count++;
+        if (e.created_at > expandMap[sku].lastExpandedAt) expandMap[sku].lastExpandedAt = e.created_at;
       }
     }
+    const topExpanded = Object.values(expandMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    // ── Top inquired products ─────────────────────────────────────────────────
+    const inquiryMap: Record<string, { sku: string; name: string; count: number; leadValue: number; lastInquiredAt: string }> = {};
     for (const e of inquiries) {
       const sku = String(e.properties?.sku ?? '');
       if (!sku) continue;
-      if (!productMap[sku]) productMap[sku] = { sku, name: String(e.properties?.name ?? sku), expands: 0, inquiries: 0, leadValue: 0 };
-      productMap[sku].inquiries++;
+      if (!inquiryMap[sku]) inquiryMap[sku] = { sku, name: String(e.properties?.name ?? sku), count: 0, leadValue: 0, lastInquiredAt: e.created_at };
+      inquiryMap[sku].count++;
+      if (e.created_at > inquiryMap[sku].lastInquiredAt) inquiryMap[sku].lastInquiredAt = e.created_at;
       const v = parseFloat(String(e.properties?.leadValue ?? '0').replace(/[^0-9.]/g, ''));
-      if (!isNaN(v)) productMap[sku].leadValue += v;
+      if (!isNaN(v)) inquiryMap[sku].leadValue += v;
     }
-
-    const topProducts = Object.values(productMap)
-      .sort((a, b) => (b.expands + b.inquiries * 3) - (a.expands + a.inquiries * 3))
+    const topInquired = Object.values(inquiryMap)
+      .sort((a, b) => b.count - a.count)
       .slice(0, 20);
 
     // ── Top filters ───────────────────────────────────────────────────────────
@@ -250,7 +256,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       dailyEvents,
       funnel,
-      topProducts,
+      topExpanded,
+      topInquired,
       topFilters,
       categoryBreakdown,
       scrollDepth,

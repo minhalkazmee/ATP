@@ -23,7 +23,8 @@ interface DashData {
   kpis: Kpis;
   dailyEvents: { date: string; count: number }[];
   funnel: { step: string; key: string; count: number }[];
-  topProducts: { sku: string; name: string; expands: number; inquiries: number; leadValue: number }[];
+  topExpanded:  { sku: string; name: string; count: number; lastExpandedAt: string }[];
+  topInquired:  { sku: string; name: string; count: number; leadValue: number; lastInquiredAt: string }[];
   topFilters: { label: string; count: number }[];
   categoryBreakdown: { category: string; count: number }[];
   scrollDepth: { milestone: number; sessions: number }[];
@@ -405,41 +406,69 @@ export default function Dashboard() {
               </Card>
             </div>
 
-            {/* ── Top Products + Filters ── */}
+            {/* ── Most Inquired ── */}
+            <Card title="Most Inquired Products" style={{ marginBottom: 14 }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['#', 'Product', 'SKU', 'Inquiries', 'Lead Value', 'Last Inquired'].map((h, i) => (
+                        <th key={h} style={{ ...thStyle, textAlign: i >= 3 ? 'right' : 'left' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.topInquired.map((p, i) => (
+                      <tr key={p.sku} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                        <td style={{ ...tdStyle, color: '#D1D5DB', width: 32 }}>{i + 1}</td>
+                        <td style={tdStyle} title={p.name}>{clip(p.name, 36)}</td>
+                        <td style={{ ...tdStyle, color: SLATE, fontFamily: 'monospace', fontSize: '0.73rem' }}>{p.sku}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>
+                          <span style={{ background: 'rgba(255,107,0,0.1)', color: ORANGE, padding: '2px 10px', borderRadius: 20, fontWeight: 700, fontSize: '0.75rem' }}>{fmtN(p.count)}</span>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right', color: p.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: p.leadValue > 0 ? 700 : 400 }}>
+                          {p.leadValue > 0 ? fmt$(p.leadValue) : '-'}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right', color: SLATE, fontSize: '0.76rem' }}>
+                          {p.lastInquiredAt ? new Date(p.lastInquiredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                    {data.topInquired.length === 0 && (
+                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>No inquiries yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* ── Most Expanded + Filters ── */}
             <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14, marginBottom: 14 }}>
 
-              <Card title="Top Products">
+              <Card title="Most Expanded Products">
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
-                        {['Product', 'SKU', 'Expands', 'Inquiries', 'Conv %', 'Lead Value'].map((h, i) => (
-                          <th key={h} style={{ ...thStyle, textAlign: i > 1 ? 'right' : 'left' }}>{h}</th>
+                        {['#', 'Product', 'SKU', 'Expands', 'Last Expanded'].map((h, i) => (
+                          <th key={h} style={{ ...thStyle, textAlign: i >= 3 ? 'right' : 'left' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {data.topProducts.map((p, i) => {
-                        const conv = p.expands > 0 ? ((p.inquiries / p.expands) * 100).toFixed(1) : '-';
-                        return (
-                          <tr key={p.sku} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                            <td style={tdStyle} title={p.name}>{clip(p.name, 30)}</td>
-                            <td style={{ ...tdStyle, color: SLATE, fontFamily: 'monospace', fontSize: '0.73rem' }}>{p.sku}</td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>{fmtN(p.expands)}</td>
-                            <td style={{ ...tdStyle, textAlign: 'right' }}>
-                              {p.inquiries > 0
-                                ? <span style={{ background: 'rgba(255,107,0,0.1)', color: ORANGE, padding: '2px 8px', borderRadius: 20, fontWeight: 700, fontSize: '0.75rem' }}>{fmtN(p.inquiries)}</span>
-                                : <span style={{ color: '#D1D5DB' }}>-</span>}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', color: SLATE }}>{conv}{conv !== '-' ? '%' : ''}</td>
-                            <td style={{ ...tdStyle, textAlign: 'right', color: p.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: p.leadValue > 0 ? 700 : 400 }}>
-                              {p.leadValue > 0 ? fmt$(p.leadValue) : '-'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {data.topProducts.length === 0 && (
-                        <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>No data yet</td></tr>
+                      {data.topExpanded.map((p, i) => (
+                        <tr key={p.sku} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                          <td style={{ ...tdStyle, color: '#D1D5DB', width: 32 }}>{i + 1}</td>
+                          <td style={tdStyle} title={p.name}>{clip(p.name, 36)}</td>
+                          <td style={{ ...tdStyle, color: SLATE, fontFamily: 'monospace', fontSize: '0.73rem' }}>{p.sku}</td>
+                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>{fmtN(p.count)}</td>
+                          <td style={{ ...tdStyle, textAlign: 'right', color: SLATE, fontSize: '0.76rem' }}>
+                            {p.lastExpandedAt ? new Date(p.lastExpandedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                      {data.topExpanded.length === 0 && (
+                        <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#D1D5DB', padding: '24px' }}>No data yet</td></tr>
                       )}
                     </tbody>
                   </table>
