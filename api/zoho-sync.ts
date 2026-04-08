@@ -25,16 +25,15 @@ async function getZohoToken(): Promise<string> {
 // Uses /search with criteria=(Lead_Source:equals:SunhubATP) so we only pull
 // records that originated from this tool. Handles cursor pagination for >200.
 
-async function fetchZohoModule(token: string, module: string, fields: string): Promise<any[]> {
+async function fetchZohoModule(token: string, module: string, fields: string, criteria: string): Promise<any[]> {
   const all: any[] = [];
   let pageToken: string | null = null;
   let page = 1;
 
-  // Lead_Source field name is the same on both Leads and Deals modules
-  const criteria = encodeURIComponent('(Lead_Source:equals:SunhubATP)');
+  const encodedCriteria = encodeURIComponent(criteria);
 
   while (true) {
-    const base = `https://www.zohoapis.com/crm/v6/${module}/search?criteria=${criteria}&fields=${fields}&per_page=200`;
+    const base = `https://www.zohoapis.com/crm/v6/${module}/search?criteria=${encodedCriteria}&fields=${fields}&per_page=200`;
     const url = pageToken
       ? `${base}&page_token=${encodeURIComponent(pageToken)}`
       : `${base}&page=${page}`;
@@ -134,9 +133,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fetch Leads and Deals in parallel
     const [rawLeads, rawDeals] = await Promise.all([
       fetchZohoModule(token, 'Leads',
-        'id,Email,Full_Name,Company,Lead_Value,Lead_Status,Inquired_Product,Created_Time'),
+        'id,Email,Full_Name,Company,Lead_Value,Lead_Status,Inquired_Product,Created_Time',
+        '(Lead_Source:equals:SunhubATP.com)'),
       fetchZohoModule(token, 'Deals',
-        'id,Deal_Name,Amount,Stage,Closing_Date,Account_Name,Contact_Name,Email,Inquired_Product,Created_Time'),
+        'id,Deal_Name,Amount,Stage,Closing_Date,Account_Name,Contact_Name,Email,Inquired_Product,Created_Time',
+        '(Lead_Source:equals:SunhubATP.com)'),
     ]);
 
     const leads = transformLeads(rawLeads);
