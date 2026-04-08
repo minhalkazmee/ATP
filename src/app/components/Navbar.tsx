@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, X, Phone, Mail } from "lucide-react";
+import { Menu, X, Phone, Mail, SlidersHorizontal } from "lucide-react";
 
 const links = [
   { name: "Solar Panels", href: "#solar-panels" },
@@ -8,7 +8,7 @@ const links = [
   { name: "EV Chargers", href: "#misc" },
 ];
 
-export function Navbar() {
+export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -44,6 +44,25 @@ export function Navbar() {
             </a>
           ))}
           <div className="flex items-center gap-4">
+            <button
+              onClick={onOpenWatchlist}
+              className="flex items-center gap-2 transition-all hover:brightness-105 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#FF6B00,#FF8533)",
+                color: "#fff",
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 600,
+                fontSize: "0.8rem",
+                padding: "7px 14px",
+                borderRadius: 8,
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(255,107,0,0.2)",
+              }}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              My Watchlist
+            </button>
             <a
               href="tel:+18004099172"
               className="text-[#374151] hover:text-[#FF6B00] transition-colors"
@@ -85,6 +104,20 @@ export function Navbar() {
               {link.name}
             </a>
           ))}
+          <button
+            onClick={() => { onOpenWatchlist?.(); setOpen(false); }}
+            className="flex items-center gap-2 mt-3 w-full"
+            style={{
+              background: "linear-gradient(135deg,#FF6B00,#FF8533)",
+              color: "#fff", fontFamily: "Inter, sans-serif",
+              fontWeight: 600, fontSize: "0.9rem",
+              padding: "11px 16px", borderRadius: 8,
+              border: "none", cursor: "pointer",
+            }}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            My Watchlist
+          </button>
           <div className="mt-4 flex flex-col gap-3 border-t pt-5 px-2">
             <a
               href="tel:+18004099172"

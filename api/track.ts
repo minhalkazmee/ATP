@@ -72,11 +72,21 @@ async function fireEvent(email: string, data: Record<string, unknown>) {
   });
 }
 
+function formatCurrency(n: number): string {
+  return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 async function updateContactFields(
   contact: ContactProfile,
   data: Record<string, unknown>
 ) {
   const fieldIds = await getFieldIds();
+
+  const requestedQty = Number(data.requestedQty ?? 0);
+  const unitPrice    = Number(data.unitPrice ?? 0);
+  const leadValue    = requestedQty > 0 && unitPrice > 0
+    ? formatCurrency(requestedQty * unitPrice)
+    : '';
 
   const toUpdate: Record<string, string> = {
     LASTSKU:         String(data.sku       ?? ''),
@@ -86,6 +96,7 @@ async function updateContactFields(
     LASTPRICE:       String(data.price     ?? ''),
     LASTQTY:         String(data.qty       ?? ''),
     LASTIMAGEURL:    String(data.img       ?? ''),
+    LASTLEADVALUE:   leadValue,
   };
 
   const fieldValues = Object.entries(toUpdate)
@@ -135,11 +146,17 @@ async function createZohoLead(
   }
 
   // 2. Build lead — mapped to actual Zoho field API names
+  const rQty      = Number(data.requestedQty ?? 0);
+  const uPrice    = Number(data.unitPrice ?? 0);
+  const lv        = rQty > 0 && uPrice > 0 ? formatCurrency(rQty * uPrice) : '';
+
   const inquiryLines = [
-    `Product: ${String(data.name  ?? '')}`,
-    `SKU:     ${String(data.sku   ?? '')}`,
-    `Price:   ${String(data.price ?? '')}`,
-    `Qty:     ${String(data.qty   ?? '')}`,
+    `Product:      ${String(data.name  ?? '')}`,
+    `SKU:          ${String(data.sku   ?? '')}`,
+    `Price:        ${String(data.price ?? '')}`,
+    `Qty (listed): ${String(data.qty   ?? '')}`,
+    rQty ? `Qty (requested): ${rQty}` : '',
+    lv   ? `Lead Value:      ${lv}`  : '',
     data.message ? `\nMessage: ${String(data.message)}` : '',
   ].filter(Boolean).join('\n');
 

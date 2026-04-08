@@ -48,17 +48,24 @@ const primaryBtn = (disabled = false): React.CSSProperties => ({
 });
 
 export function InquireModal({ trackingData, onClose }: Props) {
-  const knownEmail = localStorage.getItem('ac_email');
-  const [step, setStep] = useState<Step>(knownEmail ? 'message' : 'email');
+  const knownEmail     = localStorage.getItem('ac_email');
+  const knownFirstName = localStorage.getItem('ac_first_name') || '';
+  const knownLastName  = localStorage.getItem('ac_last_name')  || '';
+  const knownDetails   = !!(knownFirstName && knownLastName);
+
+  const initialStep: Step = knownEmail ? 'message' : 'email';
+
+  const [step, setStep] = useState<Step>(initialStep);
   const [form, setForm] = useState({
-    email:   knownEmail || '',
-    message: '',
-    firstName: localStorage.getItem('ac_first_name') || '',
-    lastName:  '',
-    phone:     localStorage.getItem('ac_phone') || '',
-    company:   '',
-    state:     '',
-    zip:       '',
+    email:     knownEmail     || '',
+    message:   '',
+    qty:       '',
+    firstName: knownFirstName,
+    lastName:  knownLastName,
+    phone:     localStorage.getItem('ac_phone')   || '',
+    company:   localStorage.getItem('ac_company') || '',
+    state:     localStorage.getItem('ac_state')   || '',
+    zip:       localStorage.getItem('ac_zip')     || '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -79,7 +86,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
   const submit = async () => {
     setLoading(true);
     try {
-      await trackInquiry(trackingData, {
+      await trackInquiry({ ...trackingData, ...(form.qty ? { requestedQty: form.qty } : {}) }, {
         firstName: form.firstName,
         lastName:  form.lastName,
         phone:     form.phone,
@@ -89,7 +96,11 @@ export function InquireModal({ trackingData, onClose }: Props) {
         message:   form.message,
       } as any);
       if (form.firstName) localStorage.setItem('ac_first_name', form.firstName);
-      if (form.phone) localStorage.setItem('ac_phone', form.phone);
+      if (form.lastName)  localStorage.setItem('ac_last_name',  form.lastName);
+      if (form.phone)     localStorage.setItem('ac_phone',      form.phone);
+      if (form.company)   localStorage.setItem('ac_company',    form.company);
+      if (form.state)     localStorage.setItem('ac_state',      form.state);
+      if (form.zip)       localStorage.setItem('ac_zip',        form.zip);
     } catch {}
     setStep('thanks');
     setLoading(false);
@@ -102,9 +113,13 @@ export function InquireModal({ trackingData, onClose }: Props) {
     setStep('message');
   };
 
-  const handleMessageNext = (e: React.FormEvent) => {
+  const handleMessageNext = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep('details');
+    if (knownDetails) {
+      await submit();
+    } else {
+      setStep('details');
+    }
   };
 
   const handleDetails = async (e: React.FormEvent) => {
@@ -118,8 +133,8 @@ export function InquireModal({ trackingData, onClose }: Props) {
 
   // Steps: email(if unknown) → message → details(optional) → thanks
   const steps: Step[] = knownEmail
-    ? ['message', 'details', 'thanks']
-    : ['email', 'message', 'details', 'thanks'];
+    ? (knownDetails ? ['message', 'thanks'] : ['message', 'details', 'thanks'])
+    : (knownDetails ? ['email', 'message', 'thanks'] : ['email', 'message', 'details', 'thanks']);
   const progressSteps = steps.filter(s => s !== 'thanks');
   const currentIdx    = progressSteps.indexOf(step);
 
@@ -237,9 +252,20 @@ export function InquireModal({ trackingData, onClose }: Props) {
               <textarea
                 placeholder="e.g. Can you confirm availability and lead time to Texas?"
                 value={form.message} onChange={set('message')}
-                rows={4}
-                style={{ ...inp, resize: 'vertical', lineHeight: 1.65, marginBottom: 20 }}
+                rows={3}
+                style={{ ...inp, resize: 'vertical', lineHeight: 1.65, marginBottom: 12 }}
               />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                <label style={{ ...label, margin: 0, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  How many do you need?
+                </label>
+                <input
+                  type="number" min={1} placeholder="Qty"
+                  value={form.qty} onChange={set('qty')}
+                  style={{ ...inp, width: 90, flexShrink: 0, padding: '8px 10px', fontSize: '0.83rem' }}
+                />
+              </div>
 
               <button type="submit" style={primaryBtn()}>
                 Continue →
@@ -267,7 +293,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
 
               <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={label}>First name</label>
+                  <label style={label}>First name <span style={{ color: '#EF4444' }}>*</span></label>
                   <input
                     placeholder="Jane" required autoFocus
                     value={form.firstName} onChange={set('firstName')}
@@ -275,7 +301,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={label}>Last name</label>
+                  <label style={label}>Last name <span style={{ color: '#EF4444' }}>*</span></label>
                   <input
                     placeholder="Smith" required
                     value={form.lastName} onChange={set('lastName')}
@@ -319,19 +345,6 @@ export function InquireModal({ trackingData, onClose }: Props) {
 
               <button type="submit" disabled={loading} style={primaryBtn(loading)}>
                 {loading ? 'Sending…' : 'Send Inquiry'}
-              </button>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={loading}
-                style={{
-                  width: '100%', background: 'none', border: 'none',
-                  color: '#94A3B8', fontFamily: 'Inter, sans-serif',
-                  fontSize: '0.8rem', marginTop: 10,
-                  cursor: loading ? 'not-allowed' : 'pointer', padding: '4px 0',
-                }}
-              >
-                Skip and send →
               </button>
             </form>
           )}

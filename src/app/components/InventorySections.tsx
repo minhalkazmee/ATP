@@ -3,6 +3,7 @@ import { InquireModal } from "./InquireModal";
 import { trackEvent, trackInquiry } from "../services/acTrack";
 import { Plus, Minus, ArrowUpDown, Loader2, ChevronDown } from "lucide-react";
 import { AvailabilityBadge } from "./AvailabilityBadge";
+import { type WatchlistPrefs } from "./WatchlistDrawer";
 import {
   fetchAllDeals,
   type SolarPanel,
@@ -31,6 +32,7 @@ function panelPayload(r: SolarPanel) {
     timestamp: new Date().toISOString(),
     price: r.palletPrice,
     qty: r.moduleQty,
+    unitPrice: r.pricePerWatt * parseInt(r.wp),
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
@@ -45,6 +47,7 @@ function inverterPayload(r: Inverter) {
     timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
+    unitPrice: r.priceNum,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
@@ -59,6 +62,7 @@ function storagePayload(r: StorageItem) {
     timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
+    unitPrice: r.priceNum,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
@@ -73,6 +77,7 @@ function genericPayload(r: GenericProduct, categoryLabel: string) {
     timestamp: new Date().toISOString(),
     price: r.price,
     qty: r.qty,
+    unitPrice: r.priceNum,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
@@ -357,7 +362,7 @@ const ITEMS_PER_PAGE = 10;
    SOLAR PANELS SECTION
    ════════════════════════════════════ */
 
-function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<HTMLElement | null>; data: SolarPanel[] }) {
+function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.RefObject<HTMLElement | null>; data: SolarPanel[]; prefs?: WatchlistPrefs }) {
   const [filters, setFilters] = useState({
     productType: "All", manufacturer: "All", bifacial: "All",
     frameColor: "All", connector: "All", warehouse: "All", tier: "All",
@@ -396,16 +401,22 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
       if (filters.priceWMin && r.pricePerWatt < Number(filters.priceWMin)) return false;
       if (filters.priceWMax && r.pricePerWatt > Number(filters.priceWMax)) return false;
 
+      // Watchlist prefs
+      if (prefs?.brands.length && !prefs.brands.some(b => r.brand?.toLowerCase().includes(b.toLowerCase()))) return false;
+      if (prefs?.minWatts && wp < Number(prefs.minWatts)) return false;
+      if (prefs?.maxWatts && wp > Number(prefs.maxWatts)) return false;
+      if (prefs?.maxPpw && r.pricePerWatt > Number(prefs.maxPpw)) return false;
+
       return true;
     });
-  }, [filters, data]);
+  }, [filters, data, prefs]);
 
   const visibleData = filtered.slice(0, visibleCount);
   const remaining = filtered.length - visibleCount;
 
   return (
     <Section ref={sectionRef} id="solar-panels" title="Solar Panels">
-      <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
+      {!prefs?.focusMode && <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
           <FilterSelect label="Cell / Panel Type" value={filters.productType} onChange={(v) => setFilters({ ...filters, productType: v })} options={uniqueVals("type")} trackCat="solar-panels" trackField="cellType" />
           <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="solar-panels" trackField="manufacturer" />
@@ -424,7 +435,7 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
             <ClearFiltersBtn onClick={clearFilters} />
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid #E5E7EB" }}>
         <table className="w-full md:min-w-[1200px]">
@@ -500,16 +511,18 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
       </div>
       <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="panels" />
 
-      <div className="mt-4 flex flex-col gap-0.5">
-        {[
-          "¹ Wattage values based on STC (Standard Test Conditions).",
-          "² Pricing reflects listed $/W — contact seller for volume discounts.",
-          "³ Quantities subject to prior sale and final confirmation.",
-          "⁷ Availability dates are approximate and subject to change.",
-        ].map((f) => (
-          <span key={f} style={{ fontFamily: font, fontWeight: 400, fontSize: "0.68rem", color: "#9CA3AF" }}>{f}</span>
-        ))}
-      </div>
+      {!prefs?.focusMode && (
+        <div className="mt-4 flex flex-col gap-0.5">
+          {[
+            "¹ Wattage values based on STC (Standard Test Conditions).",
+            "² Pricing reflects listed $/W — contact seller for volume discounts.",
+            "³ Quantities subject to prior sale and final confirmation.",
+            "⁷ Availability dates are approximate and subject to change.",
+          ].map((f) => (
+            <span key={f} style={{ fontFamily: font, fontWeight: 400, fontSize: "0.68rem", color: "#9CA3AF" }}>{f}</span>
+          ))}
+        </div>
+      )}
     </Section>
   );
 }
@@ -518,7 +531,7 @@ function SolarPanelsSection({ sectionRef, data }: { sectionRef: React.RefObject<
    INVERTERS SECTION
    ════════════════════════════════════ */
 
-function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HTMLElement | null>; data: Inverter[] }) {
+function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefObject<HTMLElement | null>; data: Inverter[]; prefs?: WatchlistPrefs }) {
   const [filters, setFilters] = useState({ manufacturer: "All", type: "All", phase: "All", sector: "All" });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
@@ -534,16 +547,17 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
       if (filters.type !== "All" && r.type !== filters.type) return false;
       if (filters.phase !== "All" && r.phase !== filters.phase) return false;
       if (filters.sector !== "All" && r.sector !== filters.sector) return false;
+      if (prefs?.brands.length && !prefs.brands.some(b => r.brand?.toLowerCase().includes(b.toLowerCase()))) return false;
       return true;
     });
-  }, [filters, data]);
+  }, [filters, data, prefs]);
 
   const visibleData = filtered.slice(0, visibleCount);
   const remaining = filtered.length - visibleCount;
 
   return (
     <Section ref={sectionRef} id="inverters" title="Inverters">
-      <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
+      {!prefs?.focusMode && <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
           <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="inverters" trackField="manufacturer" />
           <FilterSelect label="Inverter Type" value={filters.type} onChange={(v) => setFilters({ ...filters, type: v })} options={uniqueVals("type")} trackCat="inverters" trackField="type" />
@@ -551,7 +565,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
           <FilterSelect label="Sector" value={filters.sector} onChange={(v) => setFilters({ ...filters, sector: v })} options={uniqueVals("sector")} trackCat="inverters" trackField="sector" />
         </div>
         <div className="mt-4 flex items-end"><ClearFiltersBtn onClick={clearFilters} /></div>
-      </div>
+      </div>}
 
       <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid #E5E7EB" }}>
         <table className="w-full md:min-w-[1000px]">
@@ -628,7 +642,7 @@ function InvertersSection({ sectionRef, data }: { sectionRef: React.RefObject<HT
    STORAGE SECTION
    ════════════════════════════════════ */
 
-function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTMLElement | null>; data: StorageItem[] }) {
+function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObject<HTMLElement | null>; data: StorageItem[]; prefs?: WatchlistPrefs }) {
   const [filters, setFilters] = useState({ manufacturer: "All", type: "All", chemistry: "All" });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
@@ -643,23 +657,24 @@ function StorageSection({ sectionRef, data }: { sectionRef: React.RefObject<HTML
       if (filters.manufacturer !== "All" && r.brand !== filters.manufacturer) return false;
       if (filters.type !== "All" && r.type !== filters.type) return false;
       if (filters.chemistry !== "All" && r.chemistry !== filters.chemistry) return false;
+      if (prefs?.brands.length && !prefs.brands.some(b => r.brand?.toLowerCase().includes(b.toLowerCase()))) return false;
       return true;
     });
-  }, [filters, data]);
+  }, [filters, data, prefs]);
 
   const visibleData = filtered.slice(0, visibleCount);
   const remaining = filtered.length - visibleCount;
 
   return (
     <Section ref={sectionRef} id="storage" title="Storage">
-      <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
+      {!prefs?.focusMode && <div className="mb-6 rounded-xl p-5" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
           <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="storage" trackField="manufacturer" />
           <FilterSelect label="System Type" value={filters.type} onChange={(v) => setFilters({ ...filters, type: v })} options={uniqueVals("type")} trackCat="storage" trackField="systemType" />
           <FilterSelect label="Chemistry" value={filters.chemistry} onChange={(v) => setFilters({ ...filters, chemistry: v })} options={uniqueVals("chemistry")} trackCat="storage" trackField="chemistry" />
         </div>
         <div className="mt-4 flex items-end"><ClearFiltersBtn onClick={clearFilters} /></div>
-      </div>
+      </div>}
 
       <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid #E5E7EB" }}>
         <table className="w-full md:min-w-[1000px]">
@@ -734,22 +749,29 @@ function GenericProductSection({
   title,
   data,
   emptyMessage,
+  prefs,
 }: {
   sectionRef: React.RefObject<HTMLElement | null>;
   id: string;
   title: string;
   data: GenericProduct[];
   emptyMessage: string;
+  prefs?: WatchlistPrefs;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
-  const visibleData = data.slice(0, visibleCount);
-  const remaining = data.length - visibleCount;
+  const filteredData = useMemo(() => {
+    if (!prefs?.brands.length) return data;
+    return data.filter(r => prefs.brands.some(b => r.brand?.toLowerCase().includes(b.toLowerCase())));
+  }, [data, prefs]);
+
+  const visibleData = filteredData.slice(0, visibleCount);
+  const remaining = filteredData.length - visibleCount;
 
   return (
     <Section ref={sectionRef} id={id} title={title}>
-      {data.length === 0 ? (
+      {filteredData.length === 0 ? (
         <EmptyState message={emptyMessage} />
       ) : (
         <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid #E5E7EB" }}>
@@ -825,9 +847,10 @@ interface InventorySectionsProps {
   loading: boolean;
   error: string | null;
   onRetry: () => void;
+  prefs?: WatchlistPrefs;
 }
 
-export function InventorySections({ refs, data, loading, error, onRetry }: InventorySectionsProps) {
+export function InventorySections({ refs, data, loading, error, onRetry, prefs }: InventorySectionsProps) {
   if (error || !data) {
     return (
       <div className="mx-auto max-w-[1400px] px-5 py-10">
@@ -836,17 +859,19 @@ export function InventorySections({ refs, data, loading, error, onRetry }: Inven
     );
   }
 
+  const hidden = prefs?.hiddenCategories ?? [];
+
   return (
     <div className="mx-auto max-w-[1400px] px-5 py-10">
       <div className="flex flex-col gap-20">
-        <SolarPanelsSection sectionRef={refs["solar-panels"]} data={data.panels} />
-        <InvertersSection sectionRef={refs["inverters"]} data={data.inverters} />
-        <StorageSection sectionRef={refs["storage"]} data={data.storage} />
-        <GenericProductSection sectionRef={refs["racking"]} id="racking" title="Racking & Mounts" data={data.racking} emptyMessage="No racking products currently available." />
-        <GenericProductSection sectionRef={refs["accessories"]} id="accessories" title="Accessories & Cables" data={data.accessories} emptyMessage="No accessories currently available." />
-        <GenericProductSection sectionRef={refs["diy"]} id="diy" title="DIY & Off-Grid Kits" data={data.diy} emptyMessage="No DIY kits currently available." />
-        <GenericProductSection sectionRef={refs["components"]} id="components" title="Components & Transformers" data={data.components} emptyMessage="No components currently available." />
-        <GenericProductSection sectionRef={refs["misc"]} id="misc" title="EV Chargers" data={data.misc} emptyMessage="No EV chargers currently available." />
+        {!hidden.includes("solar-panels") && <SolarPanelsSection sectionRef={refs["solar-panels"]} data={data.panels} prefs={prefs} />}
+        {!hidden.includes("inverters") && <InvertersSection sectionRef={refs["inverters"]} data={data.inverters} prefs={prefs} />}
+        {!hidden.includes("storage") && <StorageSection sectionRef={refs["storage"]} data={data.storage} prefs={prefs} />}
+        {!hidden.includes("racking") && <GenericProductSection sectionRef={refs["racking"]} id="racking" title="Racking & Mounts" data={data.racking} emptyMessage="No racking products currently available." prefs={prefs} />}
+        {!hidden.includes("accessories") && <GenericProductSection sectionRef={refs["accessories"]} id="accessories" title="Accessories & Cables" data={data.accessories} emptyMessage="No accessories currently available." prefs={prefs} />}
+        {!hidden.includes("diy") && <GenericProductSection sectionRef={refs["diy"]} id="diy" title="DIY & Off-Grid Kits" data={data.diy} emptyMessage="No DIY kits currently available." prefs={prefs} />}
+        {!hidden.includes("components") && <GenericProductSection sectionRef={refs["components"]} id="components" title="Components & Transformers" data={data.components} emptyMessage="No components currently available." prefs={prefs} />}
+        {!hidden.includes("misc") && <GenericProductSection sectionRef={refs["misc"]} id="misc" title="EV Chargers" data={data.misc} emptyMessage="No EV chargers currently available." prefs={prefs} />}
       </div>
     </div>
   );

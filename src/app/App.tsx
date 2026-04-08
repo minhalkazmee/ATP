@@ -5,6 +5,8 @@ import { CategoryTabs } from "./components/CategoryTabs";
 import { InventorySections } from "./components/InventorySections";
 import { FAQSection } from "./components/FAQSection";
 import { Footer } from "./components/Footer";
+import { WatchlistDrawer, loadPrefs, type WatchlistPrefs } from "./components/WatchlistDrawer";
+import { ProfilePopup } from "./components/ProfilePopup";
 import { fetchAllDeals, DealsData } from "./services/sunhubApi";
 import { trackEvent, setTrackedEmail } from "./services/acTrack";
 
@@ -21,65 +23,12 @@ const categoryLabels: Record<string, string> = {
   "misc": "EV Charging & Misc",
 };
 
-function EmailCaptureBar() {
-  const [visible, setVisible] = useState(!localStorage.getItem('ac_email'));
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-
-  if (!visible) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.includes('@')) return;
-    setTrackedEmail(email);
-    trackEvent('contact_identified', { source: 'capture_bar' });
-    setSubmitted(true);
-    setTimeout(() => setVisible(false), 1800);
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-      background: '#0B2545', borderTop: '2px solid #FF6B00',
-      padding: '10px 20px', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', gap: 12,
-    }}>
-      {submitted ? (
-        <span style={{ color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', fontWeight: 600 }}>
-          ✓ You're in — deals will now be tracked for you.
-        </span>
-      ) : (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <span style={{ color: '#CBD5E1', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
-            Get notified on new solar deals:
-          </span>
-          <input
-            type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="your@email.com" required
-            style={{
-              fontFamily: 'Inter, sans-serif', fontSize: '0.82rem',
-              padding: '7px 12px', borderRadius: 6, border: '1.5px solid #334155',
-              background: '#1E3A5F', color: '#fff', outline: 'none', width: 220,
-            }}
-          />
-          <button type="submit" style={{
-            background: 'linear-gradient(135deg, #FF6B00, #FF8533)',
-            color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700,
-            fontSize: '0.82rem', padding: '7px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
-          }}>
-            Notify Me
-          </button>
-          <button type="button" onClick={() => setVisible(false)} style={{
-            background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '1rem', lineHeight: 1,
-          }}>✕</button>
-        </form>
-      )}
-    </div>
-  );
-}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("solar-panels");
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [prefs, setPrefs] = useState<WatchlistPrefs>(loadPrefs);
   const isClickScroll = useRef(false);
 
   const [data, setData] = useState<DealsData>({
@@ -110,6 +59,16 @@ export default function App() {
       setError(err.message || "Failed to fetch inventory");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const alreadyDone =
+      localStorage.getItem('atp_profile') ||
+      localStorage.getItem('atp_profile_dismissed');
+    if (!alreadyDone) {
+      const t = setTimeout(() => setProfileOpen(true), 30000);
+      return () => clearTimeout(t);
     }
   }, []);
 
@@ -174,13 +133,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: "Inter, sans-serif" }}>
-      <Navbar />
-      <HeroStrip data={data} loading={loading} />
-      <CategoryTabs active={activeTab} onTabClick={handleTabClick} />
-      <InventorySections refs={refs} data={data} loading={loading} error={error} onRetry={loadData} />
-      <FAQSection />
+      <Navbar onOpenWatchlist={() => setWatchlistOpen(true)} />
+      {!prefs.focusMode && <HeroStrip data={data} loading={loading} />}
+      {!prefs.focusMode && <CategoryTabs active={activeTab} onTabClick={handleTabClick} />}
+      <InventorySections refs={refs} data={data} loading={loading} error={error} onRetry={loadData} prefs={prefs} />
+      {!prefs.focusMode && <FAQSection />}
       <Footer />
-      <EmailCaptureBar />
+      <WatchlistDrawer open={watchlistOpen} onClose={() => setWatchlistOpen(false)} prefs={prefs} onChange={setPrefs} />
+      {profileOpen && <ProfilePopup onClose={() => setProfileOpen(false)} />}
     </div>
   );
 }
