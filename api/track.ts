@@ -38,6 +38,7 @@ async function updateContactFields(email: string, data: Record<string, unknown>)
     LASTSKU:         String(data.sku   ?? ''),
     LASTPART:        String(data.part  ?? ''),
     LASTPRODUCTNAME: String(data.name  ?? ''),
+    LASTPRODUCTURL:  String(data.url   ?? ''),
     LASTPRICE:       String(data.price ?? ''),
     LASTQTY:         String(data.qty   ?? ''),
     LASTIMAGEURL:    String(data.img   ?? ''),

@@ -26,6 +26,7 @@ function panelPayload(r: SolarPanel) {
     sku: r.sku,
     part: r.partNum,
     name: r.title,
+    url: r.productUrl,
     price: r.palletPrice,
     qty: r.moduleQty,
   };
@@ -38,6 +39,7 @@ function inverterPayload(r: Inverter) {
     sku: r.sku,
     part: r.partNum,
     name: r.title,
+    url: r.productUrl,
     price: r.price,
     qty: r.qty,
   };
@@ -50,6 +52,7 @@ function storagePayload(r: StorageItem) {
     sku: r.sku,
     part: r.partNum,
     name: r.title,
+    url: r.productUrl,
     price: r.price,
     qty: r.qty,
   };
@@ -62,6 +65,7 @@ function genericPayload(r: GenericProduct, categoryLabel: string) {
     sku: r.sku,
     part: r.partNum,
     name: r.title,
+    url: r.productUrl,
     price: r.price,
     qty: r.qty,
   };
