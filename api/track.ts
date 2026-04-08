@@ -143,15 +143,14 @@ async function createZohoLead(
   ].filter(l => !l.endsWith(':     ')).join('\n');
 
   const lead: Record<string, unknown> = {
-    Last_Name:       contact.lastName  || contact.email,
-    First_Name:      contact.firstName || '',
-    Email:           contact.email,
-    Phone:           contact.phone     || '',
-    Lead_Source:     'SunhubATP.com',
-    Description:     String(data.name ?? ''),
-    Website:         String(data.url  ?? ''),
-    How_Can_We_Help: inquiryLines,
-    First_Visit:     String(data.timestamp ?? new Date().toISOString()),
+    Last_Name:           contact.lastName  || contact.email,
+    First_Name:          contact.firstName || '',
+    Email:               contact.email,
+    Phone:               contact.phone     || '',
+    Lead_Source:         'SunhubATP.com',
+    Inquired_Product:    inquiryLines,
+    Inquired_Product_URL: String(data.url ?? ''),
+    First_Visit:         String(data.timestamp ?? new Date().toISOString()),
   };
 
   // Drop empty fields
