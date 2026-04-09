@@ -148,7 +148,8 @@ async function createZohoLead(
   // 2. Build lead — mapped to actual Zoho field API names
   const rQty      = Number(data.requestedQty ?? 0);
   const uPrice    = Number(data.unitPrice ?? 0);
-  const lv        = rQty > 0 && uPrice > 0 ? formatCurrency(rQty * uPrice) : '';
+  const leadValueRaw = rQty > 0 && uPrice > 0 ? rQty * uPrice : null;  // plain number for Zoho currency field
+  const lv           = leadValueRaw !== null ? formatCurrency(leadValueRaw) : '';
 
   const inquiryLines = [
     `Product:      ${String(data.name  ?? '')}`,
@@ -160,8 +161,6 @@ async function createZohoLead(
     data.message ? `\nMessage: ${String(data.message)}` : '',
   ].filter(Boolean).join('\n');
 
-  const leadValueNum = rQty > 0 && uPrice > 0 ? `$${(rQty * uPrice).toFixed(2)}` : null;
-
   const lead: Record<string, unknown> = {
     Last_Name:           contact.lastName  || 'Unknown',
     First_Name:          contact.firstName || '',
@@ -171,7 +170,7 @@ async function createZohoLead(
     Inquired_Product:    inquiryLines,
     Inquired_Product_URL: String(data.url ?? ''),
     First_Visit:         String(data.timestamp ?? new Date().toISOString()),
-    ...(leadValueNum !== null && { Lead_Value: leadValueNum }),
+    ...(leadValueRaw !== null && { Lead_Value: leadValueRaw }),
   };
 
   // Drop empty fields
@@ -200,7 +199,7 @@ async function createZohoLead(
       data: [{
         Inquired_Product:     lead.Inquired_Product,
         Inquired_Product_URL: lead.Inquired_Product_URL,
-        ...(leadValueNum !== null && { Lead_Value: leadValueNum }),
+        ...(leadValueRaw !== null && { Lead_Value: leadValueRaw }),
       }],
     };
     console.log('[/api/track] Zoho update payload:', JSON.stringify(updatePayload));

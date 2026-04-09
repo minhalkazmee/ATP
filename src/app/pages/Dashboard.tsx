@@ -25,8 +25,8 @@ interface DashData {
   kpis: Kpis;
   dailyEvents: { date: string; count: number }[];
   funnel: { step: string; key: string; count: number }[];
-  topExpanded:  { sku: string; name: string; count: number; lastExpandedAt: string }[];
-  topInquired:  { sku: string; name: string; count: number; leadValue: number; lastInquiredAt: string }[];
+  topExpanded: { sku: string; name: string; count: number; lastExpandedAt: string }[];
+  topInquired: { sku: string; name: string; count: number; leadValue: number; lastInquiredAt: string }[];
   topFilters: { label: string; count: number }[];
   categoryBreakdown: { category: string; count: number }[];
   scrollDepth: { milestone: number; sessions: number }[];
@@ -40,11 +40,11 @@ interface DashData {
   pipelineDeals: Deal[];
 }
 
-const PIN_KEY    = 'atp_dash_auth';
+const PIN_KEY = 'atp_dash_auth';
 const PIN_EXPIRY = 7 * 24 * 60 * 60 * 1000;
-const ORANGE     = '#FF6B00';
-const NAVY       = '#0B2545';
-const SLATE      = '#6B7280';
+const ORANGE = '#FF6B00';
+const NAVY = '#0B2545';
+const SLATE = '#6B7280';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,9 +59,9 @@ function clip(s: string, max = 26) { return s.length > max ? s.slice(0, max) + '
 
 type DrawerPayload =
   | { type: 'product_inquiries'; sku: string; name: string }
-  | { type: 'product_expands';   sku: string; name: string }
-  | { type: 'lead';   data: DashData['recentLeads'][0] }
-  | { type: 'deal';   data: Deal };
+  | { type: 'product_expands'; sku: string; name: string }
+  | { type: 'lead'; data: DashData['recentLeads'][0] }
+  | { type: 'deal'; data: Deal };
 
 function fmtDatetime(iso?: string) {
   if (!iso) return '-';
@@ -95,6 +95,14 @@ function DetailDrawer({
         .catch(() => setDetail({ error: 'Failed to load' }))
         .finally(() => setLoading(false));
     }
+    if (payload.type === 'lead' && payload.data.zohoId) {
+      setLoading(true);
+      fetch(`/api/detail?pin=${encodeURIComponent(pin)}&type=lead_notes&zohoId=${encodeURIComponent(payload.data.zohoId)}`)
+        .then(r => r.json())
+        .then(setDetail)
+        .catch(() => setDetail({ notes: [] }))
+        .finally(() => setLoading(false));
+    }
   }, [payload, pin, dateFrom, dateTo]);
 
   if (!payload) return null;
@@ -119,10 +127,11 @@ function DetailDrawer({
   }
 
   function title() {
+    if (!payload) return '';
     if (payload.type === 'product_inquiries') return `Inquiries: ${payload.name}`;
-    if (payload.type === 'product_expands')   return `Expansions: ${payload.name}`;
-    if (payload.type === 'lead')  return payload.data.name || payload.data.email || 'Lead';
-    if (payload.type === 'deal')  return payload.data.dealName || 'Deal';
+    if (payload.type === 'product_expands') return `Expansions: ${payload.name}`;
+    if (payload.type === 'lead') return payload.data.name || payload.data.email || 'Lead';
+    if (payload.type === 'deal') return payload.data.dealName || 'Deal';
     return '';
   }
 
@@ -151,8 +160,8 @@ function DetailDrawer({
           <div>
             <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 700, color: SLATE, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>
               {payload.type === 'product_inquiries' ? 'Product Inquiries' :
-               payload.type === 'product_expands'   ? 'Product Expansions' :
-               payload.type === 'lead' ? 'Zoho Lead' : 'Zoho Deal'}
+                payload.type === 'product_expands' ? 'Product Expansions' :
+                  payload.type === 'lead' ? 'Zoho Lead' : 'Zoho Deal'}
             </p>
             <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: NAVY, letterSpacing: '-0.2px' }}>{title()}</p>
           </div>
@@ -165,57 +174,58 @@ function DetailDrawer({
           {/* ── Product Inquiries ── */}
           {payload.type === 'product_inquiries' && (
             loading ? <p style={{ color: SLATE, fontSize: '0.83rem' }}>Loading…</p> :
-            detail?.error ? <p style={{ color: '#EF4444', fontSize: '0.83rem' }}>{detail.error}</p> :
-            detail?.inquiries?.length === 0 ? <p style={{ color: '#D1D5DB', fontSize: '0.83rem' }}>No inquiries in this range</p> :
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Email', 'Qty', 'Lead Value', 'Date'].map(h => (
-                    <th key={h} style={{ ...thS, textAlign: h === 'Lead Value' || h === 'Qty' ? 'right' : 'left' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(detail?.inquiries ?? []).map((r: any, i: number) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                    <td style={tdS}>{r.email || '-'}</td>
-                    <td style={{ ...tdS, textAlign: 'right' }}>{r.qty || '-'}</td>
-                    <td style={{ ...tdS, textAlign: 'right', color: r.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: r.leadValue > 0 ? 700 : 400 }}>
-                      {r.leadValue > 0 ? fmt$(r.leadValue) : '-'}
-                    </td>
-                    <td style={{ ...tdS, color: SLATE, fontSize: '0.75rem' }}>{fmtDatetime(r.date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              detail?.error ? <p style={{ color: '#EF4444', fontSize: '0.83rem' }}>{detail.error}</p> :
+                detail?.inquiries?.length === 0 ? <p style={{ color: '#D1D5DB', fontSize: '0.83rem' }}>No inquiries in this range</p> :
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Email', 'Qty', 'Lead Value', 'Date'].map(h => (
+                          <th key={h} style={{ ...thS, textAlign: h === 'Lead Value' || h === 'Qty' ? 'right' : 'left' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(detail?.inquiries ?? []).map((r: any, i: number) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                          <td style={tdS}>{r.email || '-'}</td>
+                          <td style={{ ...tdS, textAlign: 'right' }}>{r.qty || '-'}</td>
+                          <td style={{ ...tdS, textAlign: 'right', color: r.leadValue > 0 ? '#16A34A' : '#D1D5DB', fontWeight: r.leadValue > 0 ? 700 : 400 }}>
+                            {r.leadValue > 0 ? fmt$(r.leadValue) : '-'}
+                          </td>
+                          <td style={{ ...tdS, color: SLATE, fontSize: '0.75rem' }}>{fmtDatetime(r.date)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
           )}
 
           {/* ── Product Expansions ── */}
           {payload.type === 'product_expands' && (
             loading ? <p style={{ color: SLATE, fontSize: '0.83rem' }}>Loading…</p> :
-            detail?.error ? <p style={{ color: '#EF4444', fontSize: '0.83rem' }}>{detail.error}</p> :
-            detail?.expands?.length === 0 ? <p style={{ color: '#D1D5DB', fontSize: '0.83rem' }}>No expansions in this range</p> :
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Email', 'Session', 'Date'].map(h => <th key={h} style={thS}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {(detail?.expands ?? []).map((r: any, i: number) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                    <td style={tdS}>{r.email || <span style={{ color: '#D1D5DB' }}>Unknown</span>}</td>
-                    <td style={{ ...tdS, color: SLATE, fontFamily: 'monospace', fontSize: '0.72rem' }}>{r.sessionId?.slice(0, 8)}…</td>
-                    <td style={{ ...tdS, color: SLATE, fontSize: '0.75rem' }}>{fmtDatetime(r.date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              detail?.error ? <p style={{ color: '#EF4444', fontSize: '0.83rem' }}>{detail.error}</p> :
+                detail?.expands?.length === 0 ? <p style={{ color: '#D1D5DB', fontSize: '0.83rem' }}>No expansions in this range</p> :
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Email', 'Session', 'Date'].map(h => <th key={h} style={thS}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(detail?.expands ?? []).map((r: any, i: number) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                          <td style={tdS}>{r.email || <span style={{ color: '#D1D5DB' }}>Unknown</span>}</td>
+                          <td style={{ ...tdS, color: SLATE, fontFamily: 'monospace', fontSize: '0.72rem' }}>{r.sessionId?.slice(0, 8)}…</td>
+                          <td style={{ ...tdS, color: SLATE, fontSize: '0.75rem' }}>{fmtDatetime(r.date)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
           )}
 
           {/* ── Lead Detail ── */}
           {payload.type === 'lead' && (() => {
             const l = payload.data;
+            const notes: any[] = detail?.notes ?? [];
             return (
               <div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -226,13 +236,44 @@ function DetailDrawer({
                   }}>{l.status || 'New'}</span>
                   {l.leadValue > 0 && <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: '#DCFCE7', color: '#16A34A' }}>{fmt$(l.leadValue)}</span>}
                 </div>
-                <Field label="Name"       value={l.name} />
-                <Field label="Email"      value={l.email} />
-                <Field label="Company"    value={l.company} />
-                <Field label="Product"    value={l.product} />
+                <Field label="Name" value={l.name} />
+                <Field label="Email" value={l.email} />
+                <Field label="Company" value={l.company} />
                 <Field label="Lead Value" value={l.leadValue > 0 ? fmt$(l.leadValue) : null} green />
-                <Field label="Status"     value={l.status} />
-                <Field label="Created"    value={fmtDateOnly(l.createdAt)} />
+                <Field label="Status" value={l.status} />
+                <Field label="Created" value={fmtDateOnly(l.createdAt)} />
+
+                {/* Inquiry history from Zoho Notes */}
+                <div style={{ marginTop: 24 }}>
+                  <p style={{ margin: '0 0 12px', fontSize: '0.7rem', fontWeight: 700, color: SLATE, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    Inquiry History {loading ? '…' : `(${notes.length})`}
+                  </p>
+                  {loading && <p style={{ fontSize: '0.82rem', color: SLATE }}>Loading…</p>}
+                  {!loading && notes.length === 0 && (
+                    <p style={{ fontSize: '0.82rem', color: '#D1D5DB' }}>No inquiry history found</p>
+                  )}
+                  {notes.map((n, i) => (
+                    <div key={i} style={{
+                      border: '1px solid #E5E7EB', borderRadius: 10,
+                      padding: '12px 14px', marginBottom: 10,
+                      background: i === 0 ? '#FAFAFA' : '#fff',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: NAVY }}>{n.product || n.title || 'Inquiry'}</span>
+                        {n.leadValue && (
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A34A', background: '#DCFCE7', padding: '2px 8px', borderRadius: 20, flexShrink: 0, marginLeft: 8 }}>
+                            {n.leadValue}
+                          </span>
+                        )}
+                      </div>
+                      {n.sku && <p style={{ margin: '0 0 3px', fontSize: '0.73rem', color: SLATE }}>SKU: {n.sku}</p>}
+                      {n.price && <p style={{ margin: '0 0 3px', fontSize: '0.73rem', color: SLATE }}>Price: {n.price}</p>}
+                      {n.qtyRequested && <p style={{ margin: '0 0 3px', fontSize: '0.73rem', color: SLATE }}>Qty requested: {n.qtyRequested}</p>}
+                      {n.message && <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: NAVY, fontStyle: 'italic' }}>"{n.message}"</p>}
+                      <p style={{ margin: '6px 0 0', fontSize: '0.7rem', color: '#9CA3AF' }}>{fmtDatetime(n.date)}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })()}
@@ -251,12 +292,12 @@ function DetailDrawer({
                   }}>{d.stage || 'Open'}</span>
                   {d.amount > 0 && <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: isWon ? '#DCFCE7' : '#EBF3FF', color: isWon ? '#16A34A' : NAVY }}>{fmt$(d.amount)}</span>}
                 </div>
-                <Field label="Deal Name"  value={d.dealName} />
-                <Field label="Amount"     value={d.amount > 0 ? fmt$(d.amount) : null} green={isWon} />
-                <Field label="Stage"      value={d.stage} />
-                <Field label="Account"    value={d.accountName} />
-                <Field label="Contact"    value={d.contactName} />
-                <Field label="Product"    value={d.product} />
+                <Field label="Deal Name" value={d.dealName} />
+                <Field label="Amount" value={d.amount > 0 ? fmt$(d.amount) : null} green={isWon} />
+                <Field label="Stage" value={d.stage} />
+                <Field label="Account" value={d.accountName} />
+                <Field label="Contact" value={d.contactName} />
+                <Field label="Product" value={d.product} />
                 <Field label={isWon ? 'Closed Date' : 'Expected Close'} value={fmtDateOnly(d.closingDate)} />
               </div>
             );
@@ -395,17 +436,17 @@ function fmtDisplay(d?: Date) {
 }
 
 export default function Dashboard() {
-  const [pin, setPin]       = useState<string | null>(null);
-  const [range, setRange]         = useState<DateRange>({ from: daysAgo(30), to: new Date() });
-  const [pendingRange, setPendingRange] = useState<DateRange>({});
+  const [pin, setPin] = useState<string | null>(null);
+  const [range, setRange] = useState<DateRange>({ from: daysAgo(30), to: new Date() });
+  const [pendingRange, setPendingRange] = useState<DateRange>({ from: undefined });
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
-  const [data, setData]     = useState<DashData | null>(null);
+  const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
-  const [drawer, setDrawer]   = useState<DrawerPayload | null>(null);
+  const [drawer, setDrawer] = useState<DrawerPayload | null>(null);
 
   // Close picker on outside click
   useEffect(() => {
@@ -425,7 +466,7 @@ export default function Dashboard() {
         const { p, ts } = JSON.parse(stored);
         if (Date.now() - ts < PIN_EXPIRY) setPin(p);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const load = useCallback(async (p: string, from: string, to: string) => {
@@ -462,7 +503,7 @@ export default function Dashboard() {
   }
 
   const dateFrom = range.from ? toDateStr(range.from) : '';
-  const dateTo   = range.to   ? toDateStr(range.to)   : '';
+  const dateTo = range.to ? toDateStr(range.to) : '';
 
   async function syncZoho() {
     if (!pin) return;
@@ -511,7 +552,7 @@ export default function Dashboard() {
 
           {/* Date range picker */}
           <div ref={pickerRef} style={{ position: 'relative' }}>
-            <button onClick={() => { setPendingRange({}); setPickerOpen(o => !o); }} style={{
+            <button onClick={() => { setPendingRange({ from: undefined }); setPickerOpen(o => !o); }} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '5px 14px', borderRadius: 8, cursor: 'pointer',
               border: `1.5px solid ${pickerOpen ? ORANGE : '#E5E7EB'}`,
@@ -520,9 +561,9 @@ export default function Dashboard() {
               transition: 'border-color 0.15s',
             }}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-                <rect x="1" y="2" width="14" height="13" rx="2" stroke={SLATE} strokeWidth="1.5"/>
-                <path d="M1 6h14" stroke={SLATE} strokeWidth="1.5"/>
-                <path d="M5 1v2M11 1v2" stroke={SLATE} strokeWidth="1.5" strokeLinecap="round"/>
+                <rect x="1" y="2" width="14" height="13" rx="2" stroke={SLATE} strokeWidth="1.5" />
+                <path d="M1 6h14" stroke={SLATE} strokeWidth="1.5" />
+                <path d="M5 1v2M11 1v2" stroke={SLATE} strokeWidth="1.5" strokeLinecap="round" />
               </svg>
               {range.from && range.to
                 ? `${fmtDisplay(range.from)} - ${fmtDisplay(range.to)}`
@@ -639,23 +680,23 @@ export default function Dashboard() {
             {/* ── Traffic KPIs ── */}
             <p style={{ margin: '0 0 8px', color: SLATE, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Traffic & Leads</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-              <KpiCard label="Sessions"         value={fmtN(data.kpis.sessions)}           sub={`${dateFrom} to ${dateTo}`} />
-              <KpiCard label="Events"           value={fmtN(data.kpis.events)}             sub={`${dateFrom} to ${dateTo}`} />
-              <KpiCard label="Inquiries"        value={fmtN(data.kpis.inquiries)}          sub={`${dateFrom} to ${dateTo}`} />
-              <KpiCard label="Total Lead Value" value={fmt$(data.kpis.totalLeadValue)}     sub="from inquiries w/ qty" />
-              <KpiCard label="Avg Lead Value"   value={fmt$(data.kpis.avgLeadValue)}       sub="per inquiry" />
-              <KpiCard label="Zoho Leads"       value={fmtN(data.kpis.zohoLeads)}         sub="all time" />
+              <KpiCard label="Sessions" value={fmtN(data.kpis.sessions)} sub={`${dateFrom} to ${dateTo}`} />
+              <KpiCard label="Events" value={fmtN(data.kpis.events)} sub={`${dateFrom} to ${dateTo}`} />
+              <KpiCard label="Inquiries" value={fmtN(data.kpis.inquiries)} sub={`${dateFrom} to ${dateTo}`} />
+              <KpiCard label="Total Lead Value" value={fmt$(data.kpis.totalLeadValue)} sub="from inquiries w/ qty" />
+              <KpiCard label="Avg Lead Value" value={fmt$(data.kpis.avgLeadValue)} sub="per inquiry" />
+              <KpiCard label="Zoho Leads" value={fmtN(data.kpis.zohoLeads)} sub="all time" />
             </div>
 
             {/* ── Revenue KPIs ── */}
             <p style={{ margin: '0 0 8px', color: SLATE, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Revenue</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-              <KpiCard label="Total Revenue"    value={fmt$(data.kpis.totalRevenue)}       sub="closed won deals" />
-              <KpiCard label="Closed Deals"     value={fmtN(data.kpis.closedDeals)}        sub="won" />
-              <KpiCard label="Avg Deal Value"   value={fmt$(data.kpis.avgDealValue)}       sub="per closed deal" />
-              <KpiCard label="Pipeline Value"   value={fmt$(data.kpis.pipelineValue)}      sub={`${fmtN(data.kpis.openDeals)} open deals (Zoho Deals module)`} />
-              <KpiCard label="Lost Deals"       value={fmtN(data.kpis.lostDeals)}         sub="closed lost" />
-              <KpiCard label="Win Rate"         value={data.kpis.closedDeals + data.kpis.lostDeals > 0 ? `${Math.round((data.kpis.closedDeals / (data.kpis.closedDeals + data.kpis.lostDeals)) * 100)}%` : '-'} sub="won / (won + lost)" />
+              <KpiCard label="Total Revenue" value={fmt$(data.kpis.totalRevenue)} sub="closed won deals" />
+              <KpiCard label="Closed Deals" value={fmtN(data.kpis.closedDeals)} sub="won" />
+              <KpiCard label="Avg Deal Value" value={fmt$(data.kpis.avgDealValue)} sub="per closed deal" />
+              <KpiCard label="Pipeline Value" value={fmt$(data.kpis.pipelineValue)} sub={`${fmtN(data.kpis.openDeals)} open deals (Zoho Deals module)`} />
+              <KpiCard label="Lost Deals" value={fmtN(data.kpis.lostDeals)} sub="closed lost" />
+              <KpiCard label="Win Rate" value={data.kpis.closedDeals + data.kpis.lostDeals > 0 ? `${Math.round((data.kpis.closedDeals / (data.kpis.closedDeals + data.kpis.lostDeals)) * 100)}%` : '-'} sub="won / (won + lost)" />
             </div>
 
             {/* ── Activity + Funnel ── */}
@@ -817,7 +858,7 @@ export default function Dashboard() {
                     <BarChart data={data.monthlyRevenue} margin={{ top: 4, right: 8, left: -4, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                       <XAxis dataKey="month" tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} />
-                      <YAxis tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                      <YAxis tick={{ fontSize: 11, fill: SLATE, fontFamily: 'Inter' }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={({ active, payload, label }) =>
                         active && payload?.length ? (
                           <div style={{ background: NAVY, color: '#fff', borderRadius: 6, padding: '7px 12px', fontSize: '0.78rem', fontFamily: 'Inter' }}>

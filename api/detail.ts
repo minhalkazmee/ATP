@@ -4,6 +4,44 @@ const SUPABASE_URL  = process.env.SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY!;
 const DASHBOARD_PIN = process.env.DASHBOARD_PIN ?? '1234';
 
+const ZOHO_CLIENT_ID     = process.env.ZOHO_CLIENT_ID!;
+const ZOHO_CLIENT_SECRET = process.env.ZOHO_CLIENT_SECRET!;
+const ZOHO_REFRESH_TOKEN = process.env.ZOHO_REFRESH_TOKEN!;
+const ZOHO_ACCOUNTS_URL  = process.env.ZOHO_ACCOUNTS_URL ?? 'https://accounts.zoho.com';
+
+async function getZohoToken(): Promise<string> {
+  const res = await fetch(
+    `${ZOHO_ACCOUNTS_URL}/oauth/v2/token?grant_type=refresh_token&client_id=${ZOHO_CLIENT_ID}&client_secret=${ZOHO_CLIENT_SECRET}&refresh_token=${ZOHO_REFRESH_TOKEN}`,
+    { method: 'POST' }
+  );
+  const data = await res.json();
+  if (!data.access_token) throw new Error(`Zoho token error: ${JSON.stringify(data)}`);
+  return data.access_token;
+}
+
+// Parse a note's text content into structured fields
+function parseNoteContent(content: string) {
+  const lines = content.split('\n');
+  const map: Record<string, string> = {};
+  for (const line of lines) {
+    const idx = line.indexOf(':');
+    if (idx > 0) {
+      const key = line.slice(0, idx).trim().toLowerCase().replace(/\s+/g, '_');
+      const val = line.slice(idx + 1).trim();
+      if (val) map[key] = val;
+    }
+  }
+  return {
+    product:      map['product']       ?? '',
+    sku:          map['sku']           ?? '',
+    price:        map['price']         ?? '',
+    qtyRequested: map['qty_requested'] ?? '',
+    leadValue:    map['lead_value']    ?? '',
+    message:      map['message']       ?? '',
+    url:          map['url']           ?? '',
+  };
+}
+
 async function sbGet(path: string) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'apikey': SUPABASE_KEY },
@@ -71,6 +109,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `events?select=event_type,properties,created_at&email=eq.${encodeURIComponent(email)}&order=created_at.desc&limit=200`
       );
       return res.status(200).json({ events });
+    }
+
+    if (type === 'lead_notes') {
+      const zohoId = String(req.query.zohoId ?? '');
+      if (!zohoId) return res.status(400).json({ error: 'zohoId required' });
+      if (!ZOHO_CLIENT_ID || !ZOHO_REFRESH_TOKEN) return res.status(200).json({ notes: [] });
+
+      const token = await getZohoToken();
+      const notesRes = await fetch(
+        `https://www.zohoapis.com/crm/v6/Leads/${zohoId}/Notes?fields=Note_Title,Note_Content,Created_Time&sort_by=Created_Time&sort_order=desc&per_page=50`,
+        { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
+      );
+
+      if (notesRes.status === 204) return res.status(200).json({ notes: [] });
+      if (!notesRes.ok) throw new Error(`Zoho Notes ${notesRes.status}: ${await notesRes.text()}`);
+
+      const notesData = await notesRes.json();
+      const notes = (notesData.data ?? []).map((n: any) => ({
+        title:   n.Note_Title ?? '',
+        date:    n.Created_Time ?? '',
+        ...parseNoteContent(String(n.Note_Content ?? '')),
+      }));
+
+      return res.status(200).json({ notes });
     }
 
     return res.status(400).json({ error: `Unknown type: ${type}` });
