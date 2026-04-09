@@ -194,13 +194,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (l.email) zohoByEmail[String(l.email).toLowerCase()] = l;
     }
 
-    const recentLeads = Object.values(emailLeadMap)
+    // Build the set of emails already covered by events
+    const eventEmails = new Set(Object.keys(emailLeadMap).map(e => e.toLowerCase()));
+
+    const fromEvents = Object.values(emailLeadMap)
       .sort((a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime())
-      .slice(0, 50)
       .map(l => {
         const zoho = zohoByEmail[l.email.toLowerCase()];
-        // Prefer Zoho-synced lead_value (computed from Notes in zoho-sync) — it's the
-        // authoritative cumulative. Fall back to events sum for leads not yet synced.
+        // Prefer Zoho-synced lead_value (computed from Notes in zoho-sync) — authoritative.
+        // Fall back to events sum for leads not yet synced.
         const zohoValue = zoho?.lead_value != null ? Number(zoho.lead_value) : null;
         const leadValue = zohoValue != null && zohoValue > 0 ? zohoValue : l.totalValue;
         return {
@@ -214,6 +216,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           createdAt: zoho?.created_at ?? l.lastAt,
         };
       });
+
+    // Also include Zoho leads with no matching inquiry events (e.g. added manually)
+    const fromZohoOnly = (leadsData as any[])
+      .filter(l => l.email && !eventEmails.has(String(l.email).toLowerCase()))
+      .map((l: any) => ({
+        zohoId:    l.zoho_id,
+        email:     l.email,
+        name:      l.name    ?? null,
+        company:   l.company ?? null,
+        leadValue: Number(l.lead_value) || 0,
+        status:    l.status  ?? null,
+        product:   l.product ?? null,
+        createdAt: l.created_at,
+      }));
+
+    const recentLeads = [...fromEvents, ...fromZohoOnly]
+      .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+      .slice(0, 50);
 
     const zohoLeadValue = recentLeads.reduce((s, l) => s + (l.leadValue || 0), 0);
 
