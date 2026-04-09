@@ -11,14 +11,23 @@ const ZOHO_ACCOUNTS_URL  = process.env.ZOHO_ACCOUNTS_URL ?? 'https://accounts.zo
 
 // ─── Zoho Auth ────────────────────────────────────────────────────────────────
 
+let _cachedToken: { value: string; expiresAt: number } | null = null;
+
 async function getZohoToken(): Promise<string> {
+  if (_cachedToken && Date.now() < _cachedToken.expiresAt) {
+    return _cachedToken.value;
+  }
   const res = await fetch(
     `${ZOHO_ACCOUNTS_URL}/oauth/v2/token?grant_type=refresh_token&client_id=${ZOHO_CLIENT_ID}&client_secret=${ZOHO_CLIENT_SECRET}&refresh_token=${ZOHO_REFRESH_TOKEN}`,
     { method: 'POST' }
   );
   const data = await res.json();
   if (!data.access_token) throw new Error(`Zoho token error: ${JSON.stringify(data)}`);
-  return data.access_token;
+  _cachedToken = {
+    value:     data.access_token,
+    expiresAt: Date.now() + ((data.expires_in ?? 3600) - 120) * 1000,
+  };
+  return _cachedToken.value;
 }
 
 // ─── Fetch SunhubATP records from a Zoho module via search criteria ──────────

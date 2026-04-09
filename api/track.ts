@@ -120,30 +120,30 @@ async function updateContactFields(
   }
 }
 
+let _cachedToken: { value: string; expiresAt: number } | null = null;
+
+async function getZohoToken(): Promise<string | null> {
+  const { ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN, ZOHO_ACCOUNTS_URL } = process.env;
+  if (!ZOHO_CLIENT_ID || !ZOHO_REFRESH_TOKEN) return null;
+  if (_cachedToken && Date.now() < _cachedToken.expiresAt) return _cachedToken.value;
+  const res = await fetch(
+    `${ZOHO_ACCOUNTS_URL ?? 'https://accounts.zoho.com'}/oauth/v2/token?grant_type=refresh_token` +
+    `&client_id=${ZOHO_CLIENT_ID}&client_secret=${ZOHO_CLIENT_SECRET}&refresh_token=${ZOHO_REFRESH_TOKEN}`,
+    { method: 'POST' }
+  );
+  const data = await res.json();
+  if (!data.access_token) { console.error('[/api/track] Zoho token failed:', data); return null; }
+  _cachedToken = { value: data.access_token, expiresAt: Date.now() + ((data.expires_in ?? 3600) - 120) * 1000 };
+  return _cachedToken.value;
+}
+
 // Zoho lead creation — plug in once credentials are added to env
 async function createZohoLead(
   contact: ContactProfile,
   data: Record<string, unknown>
 ) {
-  const {
-    ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET,
-    ZOHO_REFRESH_TOKEN, ZOHO_ACCOUNTS_URL,
-  } = process.env;
-
-  if (!ZOHO_CLIENT_ID || !ZOHO_REFRESH_TOKEN) return; // not configured yet
-
-  // 1. Get access token
-  const tokenResp = await fetch(
-    `${ZOHO_ACCOUNTS_URL}/oauth/v2/token?grant_type=refresh_token` +
-    `&client_id=${ZOHO_CLIENT_ID}&client_secret=${ZOHO_CLIENT_SECRET}` +
-    `&refresh_token=${ZOHO_REFRESH_TOKEN}`,
-    { method: 'POST' }
-  );
-  const { access_token } = await tokenResp.json();
-  if (!access_token) {
-    console.error('[/api/track] Zoho token exchange failed');
-    return;
-  }
+  const access_token = await getZohoToken();
+  if (!access_token) return;
 
   // 2. Build lead — mapped to actual Zoho field API names
   const rQty      = Number(data.requestedQty ?? 0);
@@ -170,7 +170,7 @@ async function createZohoLead(
     Inquired_Product:    inquiryLines,
     Inquired_Product_URL: String(data.url ?? ''),
     First_Visit:         String(data.timestamp ?? new Date().toISOString()),
-    ...(leadValueRaw !== null && { Lead_Value: leadValueRaw }),
+    ...(leadValueRaw !== null && { Lead_Value: formatCurrency(leadValueRaw) }),
   };
 
   // Drop empty fields
@@ -182,24 +182,30 @@ async function createZohoLead(
     'Content-Type': 'application/json',
   };
 
-  // Check if lead already exists by email (204 = no match, no body)
+  // Check if lead already exists by email — also fetch Lead_Value so we can accumulate
   const searchResp = await fetch(
-    `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})`,
+    `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})&fields=id,Lead_Value`,
     { headers }
   );
-  const existingId = searchResp.status === 200
-    ? ((await searchResp.json())?.data?.[0]?.id ?? null)
-    : null;
+  let existingId: string | null = null;
+  let existingLeadValue = 0;
+  if (searchResp.status === 200) {
+    const searchData = await searchResp.json();
+    const existing = searchData?.data?.[0];
+    existingId = existing?.id ?? null;
+    existingLeadValue = parseFloat(String(existing?.Lead_Value ?? '0')) || 0;
+  }
 
   let zohoResp: Response;
 
   if (existingId) {
-    // Lead exists — update latest inquiry fields
+    // Lead exists — accumulate Lead_Value, update inquiry fields
+    const combinedValue = existingLeadValue + (leadValueRaw ?? 0);
     const updatePayload = {
       data: [{
         Inquired_Product:     lead.Inquired_Product,
         Inquired_Product_URL: lead.Inquired_Product_URL,
-        ...(leadValueRaw !== null && { Lead_Value: leadValueRaw }),
+        ...(combinedValue > 0 && { Lead_Value: formatCurrency(combinedValue) }),
       }],
     };
     console.log('[/api/track] Zoho update payload:', JSON.stringify(updatePayload));

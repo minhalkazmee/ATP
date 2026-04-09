@@ -9,36 +9,52 @@ const ZOHO_CLIENT_SECRET = process.env.ZOHO_CLIENT_SECRET!;
 const ZOHO_REFRESH_TOKEN = process.env.ZOHO_REFRESH_TOKEN!;
 const ZOHO_ACCOUNTS_URL  = process.env.ZOHO_ACCOUNTS_URL ?? 'https://accounts.zoho.com';
 
+// Cache token per warm serverless instance — Zoho tokens are valid 1 hour
+let _cachedToken: { value: string; expiresAt: number } | null = null;
+
 async function getZohoToken(): Promise<string> {
+  if (_cachedToken && Date.now() < _cachedToken.expiresAt) {
+    return _cachedToken.value;
+  }
   const res = await fetch(
     `${ZOHO_ACCOUNTS_URL}/oauth/v2/token?grant_type=refresh_token&client_id=${ZOHO_CLIENT_ID}&client_secret=${ZOHO_CLIENT_SECRET}&refresh_token=${ZOHO_REFRESH_TOKEN}`,
     { method: 'POST' }
   );
   const data = await res.json();
   if (!data.access_token) throw new Error(`Zoho token error: ${JSON.stringify(data)}`);
-  return data.access_token;
+  _cachedToken = {
+    value:     data.access_token,
+    expiresAt: Date.now() + ((data.expires_in ?? 3600) - 120) * 1000, // 2-min buffer
+  };
+  return _cachedToken.value;
 }
 
-// Parse a note's text content into structured fields
+// Parse a note's or Inquired_Product field's text into structured fields.
+// Handles both Note format ("Qty requested: X") and field format ("Qty (requested): X").
 function parseNoteContent(content: string) {
   const lines = content.split('\n');
   const map: Record<string, string> = {};
   for (const line of lines) {
     const idx = line.indexOf(':');
     if (idx > 0) {
-      const key = line.slice(0, idx).trim().toLowerCase().replace(/\s+/g, '_');
+      // Normalize key: lowercase, strip parentheses/extra whitespace, collapse to underscores
+      const key = line.slice(0, idx).trim().toLowerCase()
+        .replace(/[()]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/_$/, '');
       const val = line.slice(idx + 1).trim();
       if (val) map[key] = val;
     }
   }
   return {
-    product:      map['product']       ?? '',
-    sku:          map['sku']           ?? '',
-    price:        map['price']         ?? '',
-    qtyRequested: map['qty_requested'] ?? '',
-    leadValue:    map['lead_value']    ?? '',
-    message:      map['message']       ?? '',
-    url:          map['url']           ?? '',
+    product:      map['product']        ?? '',
+    sku:          map['sku']            ?? '',
+    price:        map['price']          ?? '',
+    qtyRequested: map['qty_requested']  ?? map['qty_listed'] ?? '',
+    leadValue:    map['lead_value']     ?? '',
+    message:      map['message']        ?? '',
+    url:          map['url']            ?? '',
   };
 }
 
@@ -131,6 +147,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         date:    n.Created_Time ?? '',
         ...parseNoteContent(String(n.Note_Content ?? '')),
       }));
+
+      // If no Notes exist the user only has one inquiry — it lives in the
+      // Inquired_Product field on the lead record itself, not in any Note.
+      // Fetch the lead to surface it.
+      if (notes.length === 0) {
+        const leadRes = await fetch(
+          `https://www.zohoapis.com/crm/v6/Leads/${zohoId}?fields=Inquired_Product,Lead_Value,Created_Time`,
+          { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
+        );
+        if (leadRes.ok) {
+          const leadData = await leadRes.json();
+          const lead = leadData.data?.[0];
+          if (lead?.Inquired_Product) {
+            notes.push({
+              title:     'Initial Inquiry',
+              date:      lead.Created_Time ?? '',
+              leadValue: lead.Lead_Value   ?? '',
+              ...parseNoteContent(String(lead.Inquired_Product)),
+            });
+          }
+        }
+      }
 
       return res.status(200).json({ notes });
     }
