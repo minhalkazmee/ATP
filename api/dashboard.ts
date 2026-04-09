@@ -199,19 +199,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .slice(0, 50)
       .map(l => {
         const zoho = zohoByEmail[l.email.toLowerCase()];
+        // Prefer Zoho-synced lead_value (computed from Notes in zoho-sync) — it's the
+        // authoritative cumulative. Fall back to events sum for leads not yet synced.
+        const zohoValue = zoho?.lead_value != null ? Number(zoho.lead_value) : null;
+        const leadValue = zohoValue != null && zohoValue > 0 ? zohoValue : l.totalValue;
         return {
           zohoId:    zoho?.zoho_id ?? null,
           email:     l.email,
           name:      zoho?.name    ?? null,
           company:   zoho?.company ?? null,
-          leadValue: Math.round(l.totalValue * 100) / 100,
+          leadValue: Math.round(leadValue * 100) / 100,
           status:    zoho?.status  ?? null,
           product:   l.lastProduct || (zoho?.product ?? null),
           createdAt: zoho?.created_at ?? l.lastAt,
         };
       });
 
-    const zohoLeadValue = Object.values(emailLeadMap).reduce((s, l) => s + l.totalValue, 0);
+    const zohoLeadValue = recentLeads.reduce((s, l) => s + (l.leadValue || 0), 0);
 
     // ── Deals / Revenue (Zoho sync) ───────────────────────────────────────────
     const allDeals = dealsData as any[];

@@ -220,7 +220,7 @@ async function createZohoLead(
       console.log('[/api/track] Zoho lead updated:', existingId);
     }
 
-    // Add a Note so every inquiry is logged in the activity timeline
+    // Note written for every inquiry — used by zoho-sync to compute cumulative lead value
     const noteLines = [
       `Product: ${String(data.name ?? '')}`,
       `SKU: ${String(data.sku ?? '')}`,
@@ -231,15 +231,15 @@ async function createZohoLead(
       data.message ? `Message: ${String(data.message)}` : '',
     ].filter(Boolean).join('\n');
 
+    const notePayload = JSON.stringify({
+      data: [{
+        Note_Title:   `Inquiry — ${String(data.name ?? 'product')}`,
+        Note_Content: noteLines,
+      }],
+    });
+
     await fetch(`${baseUrl}/Leads/${existingId}/Notes`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        data: [{
-          Note_Title:   `Inquiry — ${String(data.name ?? 'product')}`,
-          Note_Content: noteLines,
-        }],
-      }),
+      method: 'POST', headers, body: notePayload,
     });
 
   } else {
@@ -255,7 +255,26 @@ async function createZohoLead(
     if (zohoResult?.status !== 'success') {
       console.error('[/api/track] Zoho lead create failed:', JSON.stringify(zohoResult));
     } else {
-      console.log('[/api/track] Zoho lead created:', zohoResult?.details?.id);
+      const newLeadId: string | undefined = zohoResult?.details?.id;
+      console.log('[/api/track] Zoho lead created:', newLeadId);
+      // Also write a Note so zoho-sync can compute cumulative lead value consistently
+      if (newLeadId) {
+        const noteLines2 = [
+          `Product: ${String(data.name ?? '')}`,
+          `SKU: ${String(data.sku ?? '')}`,
+          `Price: ${String(data.price ?? '')}`,
+          rQty ? `Qty requested: ${rQty}` : '',
+          lv   ? `Lead value: ${lv}` : '',
+          String(data.url ?? '') ? `URL: ${String(data.url)}` : '',
+          data.message ? `Message: ${String(data.message)}` : '',
+        ].filter(Boolean).join('\n');
+        await fetch(`${baseUrl}/Leads/${newLeadId}/Notes`, {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            data: [{ Note_Title: `Inquiry — ${String(data.name ?? 'product')}`, Note_Content: noteLines2 }],
+          }),
+        });
+      }
     }
   }
 }

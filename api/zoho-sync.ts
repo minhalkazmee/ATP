@@ -107,18 +107,51 @@ function parseAmount(v: any): number | null {
   return isNaN(n) ? null : n;
 }
 
-function transformLeads(leads: any[]) {
-  return leads.map(l => ({
-    zoho_id:    String(l.id),
-    email:      l.Email      ?? null,
-    name:       l.Full_Name  ?? null,
-    company:    l.Company    ?? null,
-    lead_value: parseAmount(l.Lead_Value),
-    status:     l.Lead_Status       ?? null,
-    product:    l.Inquired_Product  ?? null,
-    created_at: l.Created_Time      ?? null,
-    synced_at:  new Date().toISOString(),
-  }));
+// Fetch all Notes for a lead and sum every "Lead value: $X" line.
+// This is the authoritative cumulative lead value — every inquiry writes a Note.
+async function getLeadNotesValue(token: string, leadId: string): Promise<number> {
+  try {
+    const res = await fetch(
+      `https://www.zohoapis.com/crm/v6/Leads/${leadId}/Notes?fields=Note_Content&per_page=50`,
+      { headers: { Authorization: `Zoho-oauthtoken ${token}` } }
+    );
+    if (!res.ok || res.status === 204) return 0;
+    const data = await res.json();
+    let total = 0;
+    for (const note of data.data ?? []) {
+      const content = String(note.Note_Content ?? '');
+      const match = content.match(/lead value:\s*\$?([\d,]+\.?\d*)/i);
+      if (match) {
+        const v = parseFloat(match[1].replace(/,/g, ''));
+        if (!isNaN(v)) total += v;
+      }
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
+
+async function transformLeads(leads: any[], token: string) {
+  // Fetch Notes for all leads in parallel to compute cumulative lead value
+  const noteValues = await Promise.all(leads.map(l => getLeadNotesValue(token, String(l.id))));
+  return leads.map((l, i) => {
+    const notesTotal = noteValues[i];
+    // If all inquiries have Notes (the normal case), notesTotal is the full cumulative.
+    // Fall back to Lead_Value field only for single-inquiry leads with no Notes.
+    const leadValue = notesTotal > 0 ? notesTotal : (parseAmount(l.Lead_Value) ?? 0);
+    return {
+      zoho_id:    String(l.id),
+      email:      l.Email      ?? null,
+      name:       l.Full_Name  ?? null,
+      company:    l.Company    ?? null,
+      lead_value: leadValue,
+      status:     l.Lead_Status       ?? null,
+      product:    l.Inquired_Product  ?? null,
+      created_at: l.Created_Time      ?? null,
+      synced_at:  new Date().toISOString(),
+    };
+  });
 }
 
 function transformDeals(deals: any[]) {
@@ -161,8 +194,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         '(Lead_Source:equals:SunhubATP.com)'),
     ]);
 
-    const leads = transformLeads(rawLeads);
-    const deals = transformDeals(rawDeals);
+    const [leads, deals] = await Promise.all([
+      transformLeads(rawLeads, token),
+      Promise.resolve(transformDeals(rawDeals)),
+    ]);
 
     // Wipe old data first, then insert filtered set
     await Promise.all([sbDelete('leads'), sbDelete('deals')]);
