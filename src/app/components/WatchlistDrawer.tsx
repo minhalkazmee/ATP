@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, RotateCcw, Plus, Check } from "lucide-react";
+import { motion, AnimatePresence } from "./ui/MotionPresence";
 
 export interface WatchlistPrefs {
   hiddenCategories: string[];
@@ -70,6 +71,16 @@ export function WatchlistDrawer({ open, onClose, prefs, onChange }: Props) {
   const [brandInput, setBrandInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [pillsVisible, setPillsVisible] = useState(false);
+  useEffect(() => {
+    if (open) {
+      const t = setTimeout(() => setPillsVisible(true), 180);
+      return () => clearTimeout(t);
+    } else {
+      setPillsVisible(false);
+    }
+  }, [open]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -139,26 +150,34 @@ export function WatchlistDrawer({ open, onClose, prefs, onChange }: Props) {
   return (
     <>
       {/* Backdrop */}
-      {open && (
-        <div
-          onClick={onClose}
-          style={{
-            position: "fixed", inset: 0, zIndex: 998,
-            background: "rgba(11,37,69,0.38)",
-            backdropFilter: "blur(3px)",
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="watchlist-backdrop"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 998,
+              background: "rgba(11,37,69,0.38)",
+              backdropFilter: "blur(3px)",
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Drawer */}
-      <div
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: open ? 0 : "100%" }}
+        transition={{ type: "spring", stiffness: 500, damping: 45 }}
         style={{
           position: "fixed", top: 0, right: 0, bottom: 0,
           width: 360, zIndex: 999,
           background: "#fff",
           boxShadow: "-8px 0 48px rgba(11,37,69,0.13)",
-          transform: open ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)",
           display: "flex", flexDirection: "column",
           borderLeft: "1px solid #EEF2F7",
         }}
@@ -272,12 +291,14 @@ export function WatchlistDrawer({ open, onClose, prefs, onChange }: Props) {
               Toggle sections on or off from your view.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-              {CATEGORIES.map(cat => {
+              {CATEGORIES.map((cat, index) => {
                 const isVisible = !prefs.hiddenCategories.includes(cat.id);
                 return (
-                  <button
+                  <motion.button
                     key={cat.id}
                     onClick={() => toggleCategory(cat.id)}
+                    animate={pillsVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+                    transition={{ delay: index * 0.03, duration: 0.18 }}
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "9px 10px",
@@ -285,7 +306,6 @@ export function WatchlistDrawer({ open, onClose, prefs, onChange }: Props) {
                       border: isVisible ? "1.5px solid #FF6B00" : "1.5px solid #E2E8F0",
                       background: isVisible ? "#FFF4EB" : "#F8FAFC",
                       cursor: "pointer",
-                      transition: "all 0.15s",
                       gap: 6,
                     }}
                   >
@@ -310,7 +330,7 @@ export function WatchlistDrawer({ open, onClose, prefs, onChange }: Props) {
                         : <X size={8} color="#94A3B8" strokeWidth={2.5} />
                       }
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -328,19 +348,23 @@ export function WatchlistDrawer({ open, onClose, prefs, onChange }: Props) {
             {/* Added brand tags */}
             {prefs.brands.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                {prefs.brands.map(b => (
-                  <span key={b} style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    background: "#0B2545", borderRadius: 20, padding: "5px 10px",
-                    fontFamily: "Inter, sans-serif", fontSize: "0.74rem", fontWeight: 600, color: "#fff",
-                  }}>
+                {prefs.brands.map((b, index) => (
+                  <motion.span key={b}
+                    animate={pillsVisible ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }}
+                    transition={{ delay: index * 0.04, duration: 0.18 }}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      background: "#0B2545", borderRadius: 20, padding: "5px 10px",
+                      fontFamily: "Inter, sans-serif", fontSize: "0.74rem", fontWeight: 600, color: "#fff",
+                    }}
+                  >
                     {b}
                     <button onClick={() => removeBrand(b)} style={{
                       background: "rgba(255,255,255,0.15)", border: "none", cursor: "pointer",
                       color: "#fff", padding: "1px 4px", lineHeight: 1, fontSize: "0.65rem",
                       borderRadius: 4, display: "flex", alignItems: "center",
                     }}>✕</button>
-                  </span>
+                  </motion.span>
                 ))}
               </div>
             )}
@@ -477,7 +501,7 @@ export function WatchlistDrawer({ open, onClose, prefs, onChange }: Props) {
             Preferences saved automatically to your browser.
           </p>
         </div>
-      </div>
+      </motion.div>
     </>
   );
 }

@@ -1,3 +1,5 @@
+import { motion } from "./ui/MotionPresence";
+
 const iconSize = { width: 44, height: 44, style: { objectFit: "contain" as const } };
 
 const tabs = [
@@ -104,11 +106,17 @@ export function CategoryTabs({ active, onTabClick }: Props) {
                   background: isActive ? "#F0F4F8" : "#fff",
                   minHeight: 120,
                   aspectRatio: "1 / 1",
+                  position: "relative",
+                  overflow: "hidden",
                 }}
               >
-                <div className="flex items-center justify-center" style={{ width: 44, height: 44 }}>
+                <motion.div
+                  className="flex items-center justify-center"
+                  style={{ width: 44, height: 44 }}
+                  whileTap={{ scale: 0.88 }}
+                >
                   {tab.icon}
-                </div>
+                </motion.div>
                 <span
                   style={{
                     fontFamily: "Inter, sans-serif",
@@ -119,6 +127,21 @@ export function CategoryTabs({ active, onTabClick }: Props) {
                 >
                   {tab.label}
                 </span>
+                {isActive && (
+                  <motion.div
+                    layoutId="tab-indicator"
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 3,
+                      background: "#0B2545",
+                      borderRadius: "0 0 4px 4px",
+                    }}
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
               </button>
             );
           })}

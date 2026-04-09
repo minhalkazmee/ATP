@@ -182,30 +182,25 @@ async function createZohoLead(
     'Content-Type': 'application/json',
   };
 
-  // Check if lead already exists by email — also fetch Lead_Value so we can accumulate
+  // Check if lead already exists by email
   const searchResp = await fetch(
-    `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})&fields=id,Lead_Value`,
+    `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})&fields=id`,
     { headers }
   );
   let existingId: string | null = null;
-  let existingLeadValue = 0;
   if (searchResp.status === 200) {
     const searchData = await searchResp.json();
-    const existing = searchData?.data?.[0];
-    existingId = existing?.id ?? null;
-    existingLeadValue = parseFloat(String(existing?.Lead_Value ?? '0')) || 0;
+    existingId = searchData?.data?.[0]?.id ?? null;
   }
 
   let zohoResp: Response;
 
   if (existingId) {
-    // Lead exists — accumulate Lead_Value, update inquiry fields
-    const combinedValue = existingLeadValue + (leadValueRaw ?? 0);
+    // Lead exists — update inquiry fields only (lead_value is tracked via Supabase events)
     const updatePayload = {
       data: [{
         Inquired_Product:     lead.Inquired_Product,
         Inquired_Product_URL: lead.Inquired_Product_URL,
-        ...(combinedValue > 0 && { Lead_Value: formatCurrency(combinedValue) }),
       }],
     };
     console.log('[/api/track] Zoho update payload:', JSON.stringify(updatePayload));

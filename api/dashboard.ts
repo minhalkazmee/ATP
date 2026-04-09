@@ -59,12 +59,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       allEvents,
       inquiries,
       scrollEvents,
+      allLeadInquiries,
       leadsData,
       dealsData,
     ] = await Promise.all([
       sbGet(`events?select=session_id,event_type,properties,created_at&created_at=gte.${since}&created_at=lte.${until}&${noiseFilter}&order=created_at.asc&limit=50000`),
       sbGet(`events?select=properties,created_at&event_type=eq.inquiry_submitted&created_at=gte.${since}&created_at=lte.${until}&order=created_at.desc&limit=1000`),
       sbGet(`events?select=properties&event_type=eq.scroll_depth&created_at=gte.${since}&created_at=lte.${until}&limit=10000`),
+      sbGet(`events?select=email,properties,created_at&event_type=eq.inquiry_submitted&order=created_at.desc&limit=5000`),
       sbGet(`leads?select=*&order=created_at.desc&limit=500`),
       sbGet(`deals?select=*&order=closing_date.desc&limit=1000`),
     ]);
@@ -164,19 +166,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const scrollDepth = Object.entries(scrollDist).map(([milestone, sessions]) => ({ milestone: Number(milestone), sessions }));
 
-    // ── Recent leads (Zoho sync) ──────────────────────────────────────────────
-    const recentLeads = (leadsData as any[]).slice(0, 50).map((l: any) => ({
-      zohoId:     l.zoho_id,
-      email:      l.email,
-      name:       l.name,
-      company:    l.company,
-      leadValue:  l.lead_value,
-      status:     l.status,
-      product:    l.product,
-      createdAt:  l.created_at,
-    }));
+    // ── Recent leads — aggregated from Supabase events (cumulative per email) ──
+    // Group all inquiry_submitted events by email, sum leadValue from properties.
+    // Merge Zoho leadsData for name/company/status/zohoId enrichment only.
+    const emailLeadMap: Record<string, {
+      email: string; totalValue: number; count: number;
+      lastProduct: string; lastSku: string; lastAt: string;
+    }> = {};
+    for (const e of allLeadInquiries as any[]) {
+      const email = String(e.email ?? '');
+      if (!email) continue;
+      if (!emailLeadMap[email]) {
+        emailLeadMap[email] = { email, totalValue: 0, count: 0, lastProduct: '', lastSku: '', lastAt: '' };
+      }
+      const v = parseFloat(String(e.properties?.leadValue ?? '0').replace(/[^0-9.]/g, ''));
+      if (!isNaN(v)) emailLeadMap[email].totalValue += v;
+      emailLeadMap[email].count++;
+      if (!emailLeadMap[email].lastAt || e.created_at > emailLeadMap[email].lastAt) {
+        emailLeadMap[email].lastAt = e.created_at;
+        emailLeadMap[email].lastProduct = String(e.properties?.name ?? '');
+        emailLeadMap[email].lastSku = String(e.properties?.sku ?? '');
+      }
+    }
 
-    const zohoLeadValue = (leadsData as any[]).reduce((s: number, l: any) => s + (Number(l.lead_value) || 0), 0);
+    const zohoByEmail: Record<string, any> = {};
+    for (const l of leadsData as any[]) {
+      if (l.email) zohoByEmail[String(l.email).toLowerCase()] = l;
+    }
+
+    const recentLeads = Object.values(emailLeadMap)
+      .sort((a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime())
+      .slice(0, 50)
+      .map(l => {
+        const zoho = zohoByEmail[l.email.toLowerCase()];
+        return {
+          zohoId:    zoho?.zoho_id ?? null,
+          email:     l.email,
+          name:      zoho?.name    ?? null,
+          company:   zoho?.company ?? null,
+          leadValue: Math.round(l.totalValue * 100) / 100,
+          status:    zoho?.status  ?? null,
+          product:   l.lastProduct || (zoho?.product ?? null),
+          createdAt: zoho?.created_at ?? l.lastAt,
+        };
+      });
+
+    const zohoLeadValue = Object.values(emailLeadMap).reduce((s, l) => s + l.totalValue, 0);
 
     // ── Deals / Revenue (Zoho sync) ───────────────────────────────────────────
     const allDeals = dealsData as any[];

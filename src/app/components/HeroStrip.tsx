@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { DealsData } from "../services/sunhubApi";
+import { motion, useMotionValue, useTransform, animate } from "./ui/MotionPresence";
 
 interface HeroStripProps {
   data: DealsData | null;
@@ -42,6 +44,30 @@ export function HeroStrip({ data, loading }: HeroStripProps) {
 
   const totalMws = panelsMws + invertersMws + storageMws;
   const totalDeals = panelsDeals + invertersDeals + storageDeals + otherDealsCount;
+
+  // Count-up animation for MW
+  const mwMotionValue = useMotionValue(0);
+  const displayMw = useTransform(mwMotionValue, (v) =>
+    new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+  );
+  useEffect(() => {
+    if (totalMws > 0) {
+      const controls = animate(mwMotionValue, totalMws, { duration: 1.0, ease: [0.25, 0.46, 0.45, 0.94] });
+      return controls.stop;
+    }
+  }, [totalMws]);
+
+  // Count-up animation for deals
+  const dealsMotionValue = useMotionValue(0);
+  const displayDeals = useTransform(dealsMotionValue, (v) =>
+    new Intl.NumberFormat("en-US").format(Math.round(v))
+  );
+  useEffect(() => {
+    if (totalDeals > 0) {
+      const controls = animate(dealsMotionValue, totalDeals, { duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] });
+      return controls.stop;
+    }
+  }, [totalDeals]);
 
   const StatBox = ({ title, deals, mws, qty }: { title: string, deals: number, mws: number, qty: number }) => (
     <div className="flex-1 rounded-lg border border-gray-200 bg-[#FAFAFA] overflow-hidden shadow-sm">
@@ -110,9 +136,9 @@ export function HeroStrip({ data, loading }: HeroStripProps) {
         <div className="max-w-5xl mx-auto mb-12 text-center flex flex-col items-center gap-6">
           <div className="inline-block px-8 py-6 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 border border-orange-100 shadow-sm transition-all hover:scale-[1.01]">
             <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4">
-              <span className="text-5xl md:text-7xl font-black text-orange-600 tracking-tighter">
-                {formatDecimals(totalMws)}
-              </span>
+              <motion.span className="text-5xl md:text-7xl font-black text-orange-600 tracking-tighter">
+                {displayMw}
+              </motion.span>
               <span className="text-xl md:text-3xl font-bold text-gray-700 tracking-tight">
                 MW Available Inventory
               </span>
@@ -120,10 +146,19 @@ export function HeroStrip({ data, loading }: HeroStripProps) {
           </div>
           
           <div className="flex items-center gap-2 px-6 py-2 bg-gray-50 border border-gray-100 rounded-full shadow-inner">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            <span className="text-gray-700 font-bold text-lg">
-              {formatNumber(totalDeals)}
-            </span>
+            <motion.span
+              style={{
+                width: 8, height: 8,
+                background: "#22c55e",
+                borderRadius: "50%",
+                display: "inline-block",
+              }}
+              animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.span className="text-gray-700 font-bold text-lg">
+              {displayDeals}
+            </motion.span>
             <span className="text-gray-500 font-medium">Active Deals Today</span>
           </div>
         </div>

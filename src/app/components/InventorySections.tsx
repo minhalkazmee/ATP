@@ -1,9 +1,10 @@
-import { forwardRef, useState, useMemo, useEffect, useCallback } from "react";
+import React, { forwardRef, useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { InquireModal } from "./InquireModal";
 import { trackEvent, trackInquiry } from "../services/acTrack";
 import { track } from "../services/analytics";
 import { Plus, Minus, ArrowUpDown, Loader2, ChevronDown } from "lucide-react";
 import { AvailabilityBadge } from "./AvailabilityBadge";
+import { motion, AnimatePresence } from "./ui/MotionPresence";
 import { type WatchlistPrefs } from "./WatchlistDrawer";
 import {
   fetchAllDeals,
@@ -180,28 +181,38 @@ function InquireBtn({ partNum, trackingData }: { partNum: string; trackingData?:
 
   return (
     <>
-      <button
-        onClick={() => { setOpen(true); _onInquireOpenChange?.(true); }}
-        className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
-        style={{
-          background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
-          color: "#fff",
-          fontFamily: font,
-          fontWeight: 700,
-          fontSize: "0.8rem",
-          border: "none",
-          cursor: "pointer",
-          boxShadow: "0 2px 6px rgba(255, 107, 0, 0.12)",
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
-        </svg>
-        Inquire Now
-      </button>
-      {open && (
-        <InquireModal trackingData={trackingData ?? { partNum }} onClose={close} />
-      )}
+      <span style={{ position: "relative", display: "inline-flex" }}>
+        <motion.span
+          style={{ position: "absolute", inset: -3, borderRadius: 10, border: "2px solid #FF6B00", pointerEvents: "none" }}
+          initial={{ opacity: 0, scale: 1 }}
+          whileHover={{ opacity: [0, 0.6, 0], scale: [1, 1.12, 1.18] }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        />
+        <button
+          onClick={() => { setOpen(true); _onInquireOpenChange?.(true); }}
+          className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
+          style={{
+            background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
+            color: "#fff",
+            fontFamily: font,
+            fontWeight: 700,
+            fontSize: "0.8rem",
+            border: "none",
+            cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(255, 107, 0, 0.12)",
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
+          </svg>
+          Inquire Now
+        </button>
+      </span>
+      <AnimatePresence>
+        {open && (
+          <InquireModal trackingData={trackingData ?? { partNum }} onClose={close} />
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -254,7 +265,13 @@ function ExpandBtn({ expanded, onClick, onExpand }: { expanded: boolean; onClick
       onClick={() => { if (!expanded) onExpand?.(); onClick(); }}
       className="flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-gray-100"
     >
-      {expanded ? <Minus className="h-3.5 w-3.5" style={{ color: "#4B5563" }} /> : <Plus className="h-3.5 w-3.5" style={{ color: "#4B5563" }} />}
+      <motion.span
+        animate={{ rotate: expanded ? 45 : 0 }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        style={{ display: "inline-flex" }}
+      >
+        <Plus className="h-3.5 w-3.5" style={{ color: "#4B5563" }} />
+      </motion.span>
     </button>
   );
 }
@@ -362,7 +379,12 @@ function ShowMoreButton({ onClick, remaining, itemLabel = "products" }: { onClic
         <span style={{ fontFamily: font, fontWeight: 600, fontSize: "0.85rem", color: "#FF6B00" }}>
           Show {Math.min(10, remaining)} More {itemLabel}
         </span>
-        <ChevronDown className="h-5 w-5 animate-bounce" style={{ color: "#FF6B00" }} />
+        <motion.span
+          animate={{ y: [0, 4, 0] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <ChevronDown className="h-5 w-5" style={{ color: "#FF6B00" }} />
+        </motion.span>
       </button>
     </div>
   );
@@ -473,51 +495,65 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
                   <p style={{ fontFamily: font, fontWeight: 500, fontSize: "0.9rem", color: "#9CA3AF" }}>No modules match your filters.</p>
                 </td>
               </tr>
-            ) : visibleData.map((r) => [
-              <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = panelPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'solar-panels' }); }} /></td>
-                <td style={tdStyle}>{r.brand}</td>
-                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'solar-panels' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
-                <td style={tdStyle} className={H}>{r.type}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.wp}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.palletPrice}</td>
-                <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.moduleQty}</td>
-                <td style={tdStyle} className={H}>{r.palletsRemaining}</td>
-                <td style={tdStyle} className={H}>{r.moq}</td>
-                <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
-                <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
-              </tr>,
-              ...(expanded === r.sku ? [
-                <tr key={r.sku + "-detail"} style={{ background: "#FAFAFA" }}>
-                  <td colSpan={13} style={{ padding: "16px 24px", borderBottom: "1px solid #F3F4F6" }}>
-                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-y-4">
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3 flex-1">
-                        <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
-                        <div className="md:hidden"><DetailItem label="Cell Type" value={r.type} /></div>
-                        <div className="md:hidden"><DetailItem label="Total Qty" value={r.moduleQty} /></div>
-                        <div className="md:hidden"><DetailItem label="Pallets" value={r.palletsRemaining} /></div>
-                        <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
-                        <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
-                        <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
-                        <DetailItem label="Cells" value={r.cells} />
-                        <DetailItem label="Bifacial" value={r.bifacial} />
-                        <DetailItem label="Frame Color" value={r.frameColor} />
-                        <DetailItem label="Connector" value={r.connector} />
-                        <DetailItem label="Warranty" value={r.warranty} />
-                        <DetailItem label="Tier" value={r.tier || "—"} />
-                        <DetailItem label="Weight" value={r.weight} />
-                        <DetailItem label="Dimensions" value={r.dims} />
-                        {r.windLoad ? <DetailItem label="Wind Load" value={r.windLoad} /> : null}
-                        {r.snowLoad ? <DetailItem label="Snow Load" value={r.snowLoad} /> : null}
-                      </div>
-                      <div className="shrink-0 lg:pb-0.5">
-                        <InquireBtn partNum={r.partNum || r.brand} trackingData={panelPayload(r)} />
-                      </div>
-                    </div>
-                  </td>
+            ) : visibleData.map((r) => (
+              <React.Fragment key={r.sku}>
+                <tr className="transition-colors hover:bg-amber-50/40">
+                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = panelPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'solar-panels' }); }} /></td>
+                  <td style={tdStyle}>{r.brand}</td>
+                  <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'solar-panels' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                  <td style={tdStyle} className={H}>{r.type}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.wp}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.palletPrice}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.moduleQty}</td>
+                  <td style={tdStyle} className={H}>{r.palletsRemaining}</td>
+                  <td style={tdStyle} className={H}>{r.moq}</td>
+                  <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
+                  <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
                 </tr>
-              ] : []),
-            ])}
+                <AnimatePresence>
+                  {expanded === r.sku && (
+                    <tr key={r.sku + "-detail"}>
+                      <td colSpan={13} style={{ padding: 0 }}>
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                          style={{ overflow: "hidden" }}
+                        >
+                          <div style={{ padding: "16px 24px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6" }}>
+                            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-y-4">
+                              <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3 flex-1">
+                                <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
+                                <div className="md:hidden"><DetailItem label="Cell Type" value={r.type} /></div>
+                                <div className="md:hidden"><DetailItem label="Total Qty" value={r.moduleQty} /></div>
+                                <div className="md:hidden"><DetailItem label="Pallets" value={r.palletsRemaining} /></div>
+                                <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
+                                <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
+                                <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
+                                <DetailItem label="Cells" value={r.cells} />
+                                <DetailItem label="Bifacial" value={r.bifacial} />
+                                <DetailItem label="Frame Color" value={r.frameColor} />
+                                <DetailItem label="Connector" value={r.connector} />
+                                <DetailItem label="Warranty" value={r.warranty} />
+                                <DetailItem label="Tier" value={r.tier || "—"} />
+                                <DetailItem label="Weight" value={r.weight} />
+                                <DetailItem label="Dimensions" value={r.dims} />
+                                {r.windLoad ? <DetailItem label="Wind Load" value={r.windLoad} /> : null}
+                                {r.snowLoad ? <DetailItem label="Snow Load" value={r.snowLoad} /> : null}
+                              </div>
+                              <div className="shrink-0 lg:pb-0.5">
+                                <InquireBtn partNum={r.partNum || r.brand} trackingData={panelPayload(r)} />
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </td>
+                    </tr>
+                  )}
+                </AnimatePresence>
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>
@@ -605,46 +641,60 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
                   <p style={{ fontFamily: font, fontWeight: 500, fontSize: "0.9rem", color: "#9CA3AF" }}>No inverters match your filters.</p>
                 </td>
               </tr>
-            ) : visibleData.map((r) => [
-              <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = inverterPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'inverters' }); }} /></td>
-                <td style={tdStyle}>{r.brand}</td>
-                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'inverters' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
-                <td style={tdStyle} className={H}>{r.type}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.power}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
-                <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.qty}</td>
-                <td style={tdStyle} className={H}>{r.moq}</td>
-                <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
-                <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
-              </tr>,
-              ...(expanded === r.sku ? [
-                <tr key={r.sku + "-d"} style={{ background: "#FAFAFA" }}>
-                  <td colSpan={11} style={{ padding: "16px 24px", borderBottom: "1px solid #F3F4F6" }}>
-                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-y-4">
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3 flex-1">
-                        <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
-                        <div className="md:hidden"><DetailItem label="Type" value={r.type} /></div>
-                        <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
-                        <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
-                        <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
-                        <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
-                        <DetailItem label="Voltage" value={r.voltage} />
-                        <DetailItem label="Phase" value={r.phase} />
-                        <DetailItem label="Sector" value={r.sector} />
-                        <DetailItem label="Warranty" value={r.warranty} />
-                        <DetailItem label="Weight" value={r.weight} />
-                        <DetailItem label="Dimensions" value={r.dims} />
-                        <DetailItem label="Features" value={r.features} />
-                      </div>
-                      <div className="shrink-0 lg:pb-0.5">
-                        <InquireBtn partNum={r.partNum || r.brand} trackingData={inverterPayload(r)} />
-                      </div>
-                    </div>
-                  </td>
+            ) : visibleData.map((r) => (
+              <React.Fragment key={r.sku}>
+                <tr className="transition-colors hover:bg-amber-50/40">
+                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = inverterPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'inverters' }); }} /></td>
+                  <td style={tdStyle}>{r.brand}</td>
+                  <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'inverters' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                  <td style={tdStyle} className={H}>{r.type}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.power}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.qty}</td>
+                  <td style={tdStyle} className={H}>{r.moq}</td>
+                  <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
+                  <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
                 </tr>
-              ] : []),
-            ])}
+                <AnimatePresence>
+                  {expanded === r.sku && (
+                    <tr key={r.sku + "-d"}>
+                      <td colSpan={11} style={{ padding: 0 }}>
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                          style={{ overflow: "hidden" }}
+                        >
+                          <div style={{ padding: "16px 24px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6" }}>
+                            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-y-4">
+                              <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3 flex-1">
+                                <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
+                                <div className="md:hidden"><DetailItem label="Type" value={r.type} /></div>
+                                <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
+                                <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
+                                <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
+                                <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
+                                <DetailItem label="Voltage" value={r.voltage} />
+                                <DetailItem label="Phase" value={r.phase} />
+                                <DetailItem label="Sector" value={r.sector} />
+                                <DetailItem label="Warranty" value={r.warranty} />
+                                <DetailItem label="Weight" value={r.weight} />
+                                <DetailItem label="Dimensions" value={r.dims} />
+                                <DetailItem label="Features" value={r.features} />
+                              </div>
+                              <div className="shrink-0 lg:pb-0.5">
+                                <InquireBtn partNum={r.partNum || r.brand} trackingData={inverterPayload(r)} />
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </td>
+                    </tr>
+                  )}
+                </AnimatePresence>
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>
@@ -717,42 +767,56 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
                   <p style={{ fontFamily: font, fontWeight: 500, fontSize: "0.9rem", color: "#9CA3AF" }}>No storage products match your filters.</p>
                 </td>
               </tr>
-            ) : visibleData.map((r) => [
-              <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = storagePayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'storage' }); }} /></td>
-                <td style={tdStyle}>{r.brand}</td>
-                <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'storage' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
-                <td style={tdStyle} className={H}>{r.chemistry}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.capacity}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
-                <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.qty}</td>
-                <td style={tdStyle} className={H}>{r.moq}</td>
-                <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
-                <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
-              </tr>,
-              ...(expanded === r.sku ? [
-                <tr key={r.sku + "-d"} style={{ background: "#FAFAFA" }}>
-                  <td colSpan={11} style={{ padding: "16px 24px", borderBottom: "1px solid #F3F4F6" }}>
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
-                      <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
-                      <div className="md:hidden"><DetailItem label="Chemistry" value={r.chemistry} /></div>
-                      <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
-                      <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
-                      <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
-                      <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
-                      <DetailItem label="System Type" value={r.type} />
-                      <DetailItem label="Warranty" value={r.warranty} />
-                      <DetailItem label="Weight" value={r.weight} />
-                      <DetailItem label="Dimensions" value={r.dims} />
-                      <DetailItem label="Features" value={r.features} />
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <InquireBtn partNum={r.partNum || r.brand} trackingData={storagePayload(r)} />
-                    </div>
-                  </td>
+            ) : visibleData.map((r) => (
+              <React.Fragment key={r.sku}>
+                <tr className="transition-colors hover:bg-amber-50/40">
+                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = storagePayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'storage' }); }} /></td>
+                  <td style={tdStyle}>{r.brand}</td>
+                  <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'storage' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                  <td style={tdStyle} className={H}>{r.chemistry}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.capacity}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.qty}</td>
+                  <td style={tdStyle} className={H}>{r.moq}</td>
+                  <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
+                  <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
                 </tr>
-              ] : []),
-            ])}
+                <AnimatePresence>
+                  {expanded === r.sku && (
+                    <tr key={r.sku + "-d"}>
+                      <td colSpan={11} style={{ padding: 0 }}>
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                          style={{ overflow: "hidden" }}
+                        >
+                          <div style={{ padding: "16px 24px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6" }}>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
+                              <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
+                              <div className="md:hidden"><DetailItem label="Chemistry" value={r.chemistry} /></div>
+                              <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
+                              <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
+                              <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
+                              <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
+                              <DetailItem label="System Type" value={r.type} />
+                              <DetailItem label="Warranty" value={r.warranty} />
+                              <DetailItem label="Weight" value={r.weight} />
+                              <DetailItem label="Dimensions" value={r.dims} />
+                              <DetailItem label="Features" value={r.features} />
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                              <InquireBtn partNum={r.partNum || r.brand} trackingData={storagePayload(r)} />
+                            </div>
+                          </div>
+                        </motion.div>
+                      </td>
+                    </tr>
+                  )}
+                </AnimatePresence>
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>
@@ -811,40 +875,54 @@ function GenericProductSection({
               </tr>
             </thead>
             <tbody>
-              {visibleData.map((r) => [
-                <tr key={r.sku} className="transition-colors hover:bg-amber-50/40">
-                  <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = genericPayload(r, id); trackEvent('product_expanded', p); track('product_expand', { ...p, category: id }); }} /></td>
-                  <td style={tdStyle}>{r.brand}</td>
-                  <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: id })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
-                  <td style={tdStyle} className={H}>{r.category}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.qty}</td>
-                  <td style={tdStyle} className={H}>{r.moq}</td>
-                  <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
-                  <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
-                </tr>,
-                ...(expanded === r.sku ? [
-                  <tr key={r.sku + "-d"} style={{ background: "#FAFAFA" }}>
-                    <td colSpan={9} style={{ padding: "16px 24px", borderBottom: "1px solid #F3F4F6" }}>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
-                        <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
-                        <div className="md:hidden"><DetailItem label="Category" value={r.category} /></div>
-                        <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
-                        <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
-                        <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
-                        <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
-                        <DetailItem label="Warranty" value={r.warranty} />
-                        <DetailItem label="Weight" value={r.weight} />
-                        <DetailItem label="Dimensions" value={r.dims} />
-                        {r.category ? <DetailItem label="Category" value={r.category} /> : null}
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                      <InquireBtn partNum={r.partNum || r.brand} trackingData={genericPayload(r, id)} />
-                    </div>
-                    </td>
+              {visibleData.map((r) => (
+                <React.Fragment key={r.sku}>
+                  <tr className="transition-colors hover:bg-amber-50/40">
+                    <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = genericPayload(r, id); trackEvent('product_expanded', p); track('product_expand', { ...p, category: id }); }} /></td>
+                    <td style={tdStyle}>{r.brand}</td>
+                    <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: id })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
+                    <td style={tdStyle} className={H}>{r.category}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600 }} className={H}>{r.qty}</td>
+                    <td style={tdStyle} className={H}>{r.moq}</td>
+                    <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
+                    <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
                   </tr>
-                ] : []),
-              ])}
+                  <AnimatePresence>
+                    {expanded === r.sku && (
+                      <tr key={r.sku + "-d"}>
+                        <td colSpan={9} style={{ padding: 0 }}>
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                            style={{ overflow: "hidden" }}
+                          >
+                            <div style={{ padding: "16px 24px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6" }}>
+                              <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
+                                <div className="md:hidden"><DetailItem label="Part Number" value={r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>} /></div>
+                                <div className="md:hidden"><DetailItem label="Category" value={r.category} /></div>
+                                <div className="md:hidden"><DetailItem label="Total Qty" value={r.qty} /></div>
+                                <div className="md:hidden"><DetailItem label="MOQ" value={r.moq} /></div>
+                                <div className="md:hidden"><DetailItem label="Availability" value={<AvailabilityBadge status={r.avail} />} /></div>
+                                <div className="md:hidden"><DetailItem label="Location" value={`${r.state}, ${r.zip}`} /></div>
+                                <DetailItem label="Warranty" value={r.warranty} />
+                                <DetailItem label="Weight" value={r.weight} />
+                                <DetailItem label="Dimensions" value={r.dims} />
+                                {r.category ? <DetailItem label="Category" value={r.category} /> : null}
+                              </div>
+                              <div className="mt-4 flex justify-end">
+                                <InquireBtn partNum={r.partNum || r.brand} trackingData={genericPayload(r, id)} />
+                              </div>
+                            </div>
+                          </motion.div>
+                        </td>
+                      </tr>
+                    )}
+                  </AnimatePresence>
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
         </div>

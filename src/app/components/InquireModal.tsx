@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { setTrackedEmail, trackInquiry, captureEmail } from '../services/acTrack';
 import { track } from '../services/analytics';
+import { motion, AnimatePresence } from './ui/MotionPresence';
 
 interface Props {
   trackingData: Record<string, unknown>;
@@ -74,6 +75,20 @@ function parseMoqDefault(moq: unknown): { qty: string; unit: string } {
   return { qty, unit };
 }
 
+/* Step slide variants (directional) */
+const stepVariants = {
+  enter: (dir: number) => ({ x: dir * 28, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: dir * -28, opacity: 0 }),
+};
+
+/* Field stagger variants */
+const fieldVariants = {
+  enter: { opacity: 0, y: 8 },
+  center: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+};
+
 export function InquireModal({ trackingData, onClose }: Props) {
   const knownEmail     = localStorage.getItem('ac_email');
   const knownFirstName = localStorage.getItem('ac_first_name') || '';
@@ -83,6 +98,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
   const initialStep: Step = knownEmail ? 'message' : 'email';
 
   const [step, setStep] = useState<Step>(initialStep);
+  const directionRef = useRef(1);
 
   useEffect(() => {
     // Track the initial step reached when modal opens
@@ -151,6 +167,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
       if (form.state)     localStorage.setItem('ac_state',      form.state);
       if (form.zip)       localStorage.setItem('ac_zip',        form.zip);
     } catch {}
+    directionRef.current = 1;
     setStep('thanks');
     setLoading(false);
   };
@@ -160,6 +177,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
     setTrackedEmail(form.email);
     captureEmail(form.email, trackingData); // add to AC + write product fields immediately
     track('inquiry_step_message', { sku: trackingData.sku, name: trackingData.name });
+    directionRef.current = 1;
     setStep('message');
   };
 
@@ -174,6 +192,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
         setForm(p => ({ ...p, company: companyFromEmail(email) }));
       }
       track('inquiry_step_details', { sku: trackingData.sku, name: trackingData.name });
+      directionRef.current = 1;
       setStep('details');
     }
   };
@@ -195,8 +214,12 @@ export function InquireModal({ trackingData, onClose }: Props) {
   const currentIdx    = progressSteps.indexOf(step);
 
   return (
-    <div
+    <motion.div
       onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
         background: 'rgba(11,37,69,0.4)',
@@ -205,8 +228,12 @@ export function InquireModal({ trackingData, onClose }: Props) {
         padding: 16,
       }}
     >
-      <div
+      <motion.div
         onClick={e => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.96, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: 3 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         style={{
           background: '#fff',
           borderRadius: 18,
@@ -262,173 +289,246 @@ export function InquireModal({ trackingData, onClose }: Props) {
           {step !== 'thanks' && (
             <div style={{ display: 'flex', gap: 5, marginBottom: 20 }}>
               {progressSteps.map((_, i) => (
-                <div key={i} style={{
-                  height: 2, flex: 1, borderRadius: 2,
-                  background: i <= currentIdx ? '#FF6B00' : '#EEF2F7',
-                  transition: 'background 0.3s',
-                }} />
+                <motion.div key={i}
+                  animate={{ background: i <= currentIdx ? '#FF6B00' : '#EEF2F7' }}
+                  transition={{ duration: 0.2 }}
+                  style={{
+                    height: 2, flex: 1, borderRadius: 2,
+                  }}
+                />
               ))}
             </div>
           )}
 
-          {/* ── STEP 1: EMAIL ── */}
-          {step === 'email' && (
-            <form onSubmit={handleEmailNext}>
-              <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                What's your email?
-              </h2>
-              <p style={{ margin: '0 0 20px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
-                We'll send the seller's response straight to you.
-              </p>
+          {/* Step content with directional slide */}
+          <AnimatePresence mode="wait" custom={directionRef.current}>
+            {/* ── STEP 1: EMAIL ── */}
+            {step === 'email' && (
+              <motion.div
+                key="email"
+                custom={directionRef.current}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1], staggerChildren: 0.04, delayChildren: 0.03 }}
+              >
+                <form onSubmit={handleEmailNext}>
+                  <motion.div variants={fieldVariants}>
+                    <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
+                      What's your email?
+                    </h2>
+                  </motion.div>
+                  <motion.div variants={fieldVariants}>
+                    <p style={{ margin: '0 0 20px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
+                      We'll send the seller's response straight to you.
+                    </p>
+                  </motion.div>
 
-              <label style={label}>Email address</label>
-              <input
-                type="email" placeholder="you@company.com" required autoFocus
-                value={form.email} onChange={set('email')}
-                style={{ ...inp, marginBottom: 20 }}
-              />
+                  <motion.div variants={fieldVariants}>
+                    <label style={label}>Email address</label>
+                    <input
+                      type="email" placeholder="you@company.com" required autoFocus
+                      value={form.email} onChange={set('email')}
+                      style={{ ...inp, marginBottom: 20 }}
+                    />
+                  </motion.div>
 
-              <button type="submit" style={primaryBtn()}>
-                Continue →
-              </button>
-            </form>
-          )}
+                  <motion.div variants={fieldVariants}>
+                    <button type="submit" style={primaryBtn()}>
+                      Continue →
+                    </button>
+                  </motion.div>
+                </form>
+              </motion.div>
+            )}
 
-          {/* ── STEP 2: MESSAGE ── */}
-          {step === 'message' && (
-            <form onSubmit={handleMessageNext}>
-              <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                What would you like to know?
-              </h2>
-              <p style={{ margin: '0 0 18px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
-                Pricing, availability, lead time — anything. Optional.
-              </p>
+            {/* ── STEP 2: MESSAGE ── */}
+            {step === 'message' && (
+              <motion.div
+                key="message"
+                custom={directionRef.current}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1], staggerChildren: 0.04, delayChildren: 0.03 }}
+              >
+                <form onSubmit={handleMessageNext}>
+                  <motion.div variants={fieldVariants}>
+                    <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
+                      What would you like to know?
+                    </h2>
+                  </motion.div>
+                  <motion.div variants={fieldVariants}>
+                    <p style={{ margin: '0 0 18px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
+                      Pricing, availability, lead time — anything. Optional.
+                    </p>
+                  </motion.div>
 
-              <label style={{ ...label, marginBottom: 6 }}>How many do you need?</label>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                <input
-                  type="number" min={1} placeholder="Qty"
-                  value={form.qty} onChange={set('qty')}
-                  style={{ ...inp, width: 90, flexShrink: 0, padding: '8px 10px', fontSize: '0.83rem' }}
-                />
-                <select
-                  value={form.unit}
-                  onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
-                  style={{ ...inp, flex: 1, padding: '8px 10px', fontSize: '0.83rem', cursor: 'pointer', appearance: 'auto' }}
-                >
-                  <option value="units">Units</option>
-                  <option value="pallets">Pallets</option>
-                  <option value="containers">Containers</option>
-                </select>
-              </div>
+                  <motion.div variants={fieldVariants}>
+                    <label style={{ ...label, marginBottom: 6 }}>How many do you need?</label>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                      <input
+                        type="number" min={1} placeholder="Qty"
+                        value={form.qty} onChange={set('qty')}
+                        style={{ ...inp, width: 90, flexShrink: 0, padding: '8px 10px', fontSize: '0.83rem' }}
+                      />
+                      <select
+                        value={form.unit}
+                        onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
+                        style={{ ...inp, flex: 1, padding: '8px 10px', fontSize: '0.83rem', cursor: 'pointer', appearance: 'auto' }}
+                      >
+                        <option value="units">Units</option>
+                        <option value="pallets">Pallets</option>
+                        <option value="containers">Containers</option>
+                      </select>
+                    </div>
+                  </motion.div>
 
-              <label style={label}>
-                Message{' '}
-                <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
-              </label>
-              <textarea
-                placeholder="e.g. Can you confirm availability and lead time to Texas?"
-                value={form.message} onChange={set('message')}
-                rows={3}
-                style={{ ...inp, resize: 'vertical', lineHeight: 1.65, marginBottom: 20 }}
-              />
+                  <motion.div variants={fieldVariants}>
+                    <label style={label}>
+                      Message{' '}
+                      <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
+                    </label>
+                    <textarea
+                      placeholder="e.g. Can you confirm availability and lead time to Texas?"
+                      value={form.message} onChange={set('message')}
+                      rows={3}
+                      style={{ ...inp, resize: 'vertical', lineHeight: 1.65, marginBottom: 20 }}
+                    />
+                  </motion.div>
 
-              <button type="submit" style={primaryBtn()}>
-                Continue →
-              </button>
-            </form>
-          )}
+                  <motion.div variants={fieldVariants}>
+                    <button type="submit" style={primaryBtn()}>
+                      Continue →
+                    </button>
+                  </motion.div>
+                </form>
+              </motion.div>
+            )}
 
-          {/* ── STEP 3: DETAILS (OPTIONAL) ── */}
-          {step === 'details' && (
-            <form onSubmit={handleDetails}>
-              <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                Almost there
-              </h2>
-              <p style={{ margin: '0 0 18px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
-                Just your name so the seller knows who to reach out to.
-              </p>
+            {/* ── STEP 3: DETAILS (OPTIONAL) ── */}
+            {step === 'details' && (
+              <motion.div
+                key="details"
+                custom={directionRef.current}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1], staggerChildren: 0.06, delayChildren: 0.05 }}
+              >
+                <form onSubmit={handleDetails}>
+                  <motion.div variants={fieldVariants}>
+                    <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
+                      Almost there
+                    </h2>
+                  </motion.div>
+                  <motion.div variants={fieldVariants}>
+                    <p style={{ margin: '0 0 18px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
+                      Just your name so the seller knows who to reach out to.
+                    </p>
+                  </motion.div>
 
-              <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>First name <span style={{ color: '#EF4444' }}>*</span></label>
-                  <input
-                    placeholder="Jane" required autoFocus
-                    value={form.firstName} onChange={set('firstName')}
-                    style={inp}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Last name <span style={{ color: '#EF4444' }}>*</span></label>
-                  <input
-                    placeholder="Smith" required
-                    value={form.lastName} onChange={set('lastName')}
-                    style={inp}
-                  />
-                </div>
-              </div>
+                  <motion.div variants={fieldVariants}>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={label}>First name <span style={{ color: '#EF4444' }}>*</span></label>
+                        <input
+                          placeholder="Jane" required autoFocus
+                          value={form.firstName} onChange={set('firstName')}
+                          style={inp}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={label}>Last name <span style={{ color: '#EF4444' }}>*</span></label>
+                        <input
+                          placeholder="Smith" required
+                          value={form.lastName} onChange={set('lastName')}
+                          style={inp}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
 
-              <label style={label}>
-                Mobile{' '}
-                <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
-              </label>
-              <input
-                type="tel" placeholder="+1 (555) 000-0000"
-                value={form.phone} onChange={set('phone')}
-                style={{ ...inp, marginBottom: 12 }}
-              />
+                  <motion.div variants={fieldVariants}>
+                    <label style={label}>
+                      Mobile{' '}
+                      <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
+                    </label>
+                    <input
+                      type="tel" placeholder="+1 (555) 000-0000"
+                      value={form.phone} onChange={set('phone')}
+                      style={{ ...inp, marginBottom: 12 }}
+                    />
+                  </motion.div>
 
-              {!isBusinessEmail(form.email || knownEmail || '') && (
-                <>
-                  <label style={label}>
-                    Company{' '}
-                    <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
-                  </label>
-                  <input
-                    placeholder="Your company name"
-                    value={form.company} onChange={set('company')}
-                    style={{ ...inp, marginBottom: 12 }}
-                  />
-                </>
-              )}
+                  {!isBusinessEmail(form.email || knownEmail || '') && (
+                    <motion.div variants={fieldVariants}>
+                      <label style={label}>
+                        Company{' '}
+                        <span style={{ fontWeight: 400, color: '#94A3B8', textTransform: 'none', fontSize: '0.78rem' }}>(optional)</span>
+                      </label>
+                      <input
+                        placeholder="Your company name"
+                        value={form.company} onChange={set('company')}
+                        style={{ ...inp, marginBottom: 12 }}
+                      />
+                    </motion.div>
+                  )}
 
-              <div style={{ marginBottom: 20 }} />
+                  <motion.div variants={fieldVariants}>
+                    <div style={{ marginBottom: 20 }} />
+                    <button type="submit" disabled={loading} style={primaryBtn(loading)}>
+                      {loading ? 'Sending…' : 'Send Inquiry'}
+                    </button>
+                  </motion.div>
+                </form>
+              </motion.div>
+            )}
 
-              <button type="submit" disabled={loading} style={primaryBtn(loading)}>
-                {loading ? 'Sending…' : 'Send Inquiry'}
-              </button>
-            </form>
-          )}
-
-          {/* ── THANKS ── */}
-          {step === 'thanks' && (
-            <div style={{ textAlign: 'center', padding: '10px 0 4px' }}>
-              <div style={{
-                width: 50, height: 50, borderRadius: '50%',
-                background: '#F0FDF4', border: '1.5px solid #86EFAC',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px', fontSize: '1.3rem', color: '#16A34A',
-              }}>✓</div>
-              <h2 style={{ margin: '0 0 8px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700 }}>
-                Inquiry sent!
-              </h2>
-              <p style={{ margin: '0 0 24px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', lineHeight: 1.65 }}>
-                Our team will reach out shortly.<br />
-                We typically respond within 1 business hour.
-              </p>
-              <button onClick={onClose} style={{
-                background: '#F8FAFC', border: '1.5px solid #E2E8F0',
-                color: '#64748B', fontFamily: 'Inter, sans-serif',
-                fontWeight: 600, fontSize: '0.85rem',
-                padding: '9px 28px', borderRadius: 8, cursor: 'pointer',
-              }}>
-                Back to listings
-              </button>
-            </div>
-          )}
+            {/* ── THANKS ── */}
+            {step === 'thanks' && (
+              <motion.div
+                key="thanks"
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
+                style={{ textAlign: 'center', padding: '10px 0 4px' }}
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 25, delay: 0.06 }}
+                  style={{
+                    width: 50, height: 50, borderRadius: '50%',
+                    background: '#F0FDF4', border: '1.5px solid #86EFAC',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 16px', fontSize: '1.3rem', color: '#16A34A',
+                  }}
+                >✓</motion.div>
+                <h2 style={{ margin: '0 0 8px', color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '1.15rem', fontWeight: 700 }}>
+                  Inquiry sent!
+                </h2>
+                <p style={{ margin: '0 0 24px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', lineHeight: 1.65 }}>
+                  Our team will reach out shortly.<br />
+                  We typically respond within 1 business hour.
+                </p>
+                <button onClick={onClose} style={{
+                  background: '#F8FAFC', border: '1.5px solid #E2E8F0',
+                  color: '#64748B', fontFamily: 'Inter, sans-serif',
+                  fontWeight: 600, fontSize: '0.85rem',
+                  padding: '9px 28px', borderRadius: 8, cursor: 'pointer',
+                }}>
+                  Back to listings
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { AnimatePresence } from "./components/ui/MotionPresence";
 import { Navbar } from "./components/Navbar";
 import { HeroStrip } from "./components/HeroStrip";
 import { CategoryTabs } from "./components/CategoryTabs";
@@ -156,7 +157,9 @@ export default function App() {
       {!prefs.focusMode && <FAQSection />}
       <Footer />
       <WatchlistDrawer open={watchlistOpen} onClose={() => setWatchlistOpen(false)} prefs={prefs} onChange={setPrefs} />
-      {profileOpen && <ProfilePopup onClose={() => setProfileOpen(false)} />}
+      <AnimatePresence>
+        {profileOpen && <ProfilePopup onClose={() => setProfileOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 }
