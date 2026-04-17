@@ -4,9 +4,73 @@
 // 3. Zoho CRM lead creation with round-robin owner assignment
 // 4. Notification email to the assigned sales rep
 
-import { getNextSalesRep } from './_round-robin';
-import { SALES_TEAM, type SalesRep } from './_sales-team';
+// ── Sales team (round-robin rotation) ──────────────────────────────────
+interface SalesRep {
+  name: string;
+  firstName: string;
+  email: string;
+}
 
+const SALES_TEAM: SalesRep[] = [
+  { name: 'Mitch Bihuniak',  firstName: 'Mitch',   email: 'mitch@sunhub.com'  },
+  { name: 'Shoban Alee',     firstName: 'Shoban',   email: 'shoban@sunhub.com' },
+  { name: 'Shoaib Younus',   firstName: 'Shoaib',   email: 'shoaib@sunhub.com' },
+  { name: 'Asad Marri',      firstName: 'Asad',     email: 'asad@sunhub.com'   },
+  { name: 'Sonia Majeed',    firstName: 'Sonia',    email: 'sonia@sunhub.com'  },
+  { name: 'Cody Cooper',     firstName: 'Cody',     email: 'cody@sunhub.com'   },
+  { name: 'Hafsa Imran',     firstName: 'Hafsa',    email: 'hafsa@sunhub.com'  },
+  { name: 'Marley Kakusa',   firstName: 'Marley',   email: 'marley@sunhub.com' },
+  { name: 'Neha',            firstName: 'Neha',     email: 'neha@sunhub.com'   },
+  { name: 'Qasim Bhatti',    firstName: 'Qasim',    email: 'qasim@sunhub.com'  },
+  { name: 'Eman Shaikh',     firstName: 'Eman',     email: 'eman@sunhub.com'   },
+];
+
+// ── Round-robin (persisted in Supabase) ────────────────────────────────
+const SB_URL = process.env.SUPABASE_URL!;
+const SB_KEY = process.env.SUPABASE_SERVICE_KEY!;
+const sbHeaders = {
+  'Content-Type':  'application/json',
+  'Authorization': `Bearer ${SB_KEY}`,
+  'apikey':        SB_KEY,
+};
+
+async function getNextSalesRep(): Promise<SalesRep> {
+  const teamSize = SALES_TEAM.length;
+  let currentIndex = 0;
+
+  const getResp = await fetch(
+    `${SB_URL}/rest/v1/round_robin_state?id=eq.default&select=current_index`,
+    { headers: sbHeaders },
+  );
+
+  if (getResp.ok) {
+    const rows = await getResp.json();
+    if (rows.length > 0) {
+      currentIndex = rows[0].current_index ?? 0;
+    } else {
+      await fetch(`${SB_URL}/rest/v1/round_robin_state`, {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ id: 'default', current_index: 0 }),
+      });
+    }
+  }
+
+  const idx = currentIndex % teamSize;
+  const rep = SALES_TEAM[idx];
+  const nextIndex = (currentIndex + 1) % teamSize;
+
+  await fetch(`${SB_URL}/rest/v1/round_robin_state?id=eq.default`, {
+    method: 'PATCH',
+    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ current_index: nextIndex }),
+  });
+
+  console.log(`[round-robin] Assigned index ${idx} → ${rep.name} (next: ${nextIndex})`);
+  return rep;
+}
+
+// ── AC + Zoho logic ────────────────────────────────────────────────────
 interface ContactProfile {
   id: string;
   email: string;
