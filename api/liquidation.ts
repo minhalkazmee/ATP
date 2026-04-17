@@ -165,18 +165,16 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const [resCSV, ciCSV, invCSV, accCSV] = await Promise.all([
+    const [resCSV, ciCSV, invCSV] = await Promise.all([
       fetch(sheetUrl(TABS.residentialModules)).then(r => r.text()),
       fetch(sheetUrl(TABS.ciModules)).then(r => r.text()),
       fetch(sheetUrl(TABS.inverters)).then(r => r.text()),
-      fetch(sheetUrl(TABS.accessories)).then(r => r.text()),
     ]);
 
     const data = {
       residentialModules: parseResidentialModules(resCSV),
       ciModules: parseCIModules(ciCSV),
       inverters: parseInverters(invCSV),
-      accessories: parseAccessories(accCSV),
     };
 
     cache = { data, ts: Date.now() };

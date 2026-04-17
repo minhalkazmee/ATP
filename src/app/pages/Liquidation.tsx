@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Plus, ChevronDown, Loader2, Phone, Mail, Menu, X } from "lucide-react";
-import { motion, AnimatePresence } from "../components/ui/MotionPresence";
+import { Plus, ChevronDown, Loader2 } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "../components/ui/MotionPresence";
 import { InquireModal } from "../components/InquireModal";
 import { track } from "../services/analytics";
+import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { ProfilePopup } from "../components/ProfilePopup";
 
@@ -27,19 +28,10 @@ interface LiquidationInverter {
   power: string;
 }
 
-interface LiquidationAccessory {
-  id: string;
-  type: string;
-  brand: string;
-  model: string;
-  notes: string;
-}
-
 interface LiquidationData {
   residentialModules: LiquidationModule[];
   ciModules: LiquidationModule[];
   inverters: LiquidationInverter[];
-  accessories: LiquidationAccessory[];
 }
 
 /* ════════════════════════════════════
@@ -221,99 +213,68 @@ function SectionFooter({ filtered, total }: { filtered: number; total: number })
 }
 
 /* ════════════════════════════════════
-   NAVBAR
-   ════════════════════════════════════ */
-
-const navSections = [
-  { name: "Residential Modules", href: "#liq-residential" },
-  { name: "C&I Modules", href: "#liq-ci" },
-  { name: "Inverters", href: "#liq-inverters" },
-  { name: "Accessories", href: "#liq-accessories" },
-];
-
-function LiquidationNavbar() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <nav className="sticky top-0 z-50 bg-white" style={{ borderBottom: "1px solid #E5E7EB" }}>
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
-        <a href="/" className="flex items-center">
-          <img src="https://www.sunhub.com/assets/images/revamp/logo.svg" alt="Sunhub" style={{ height: "32px" }} />
-        </a>
-        <div className="hidden items-center gap-7 md:flex">
-          <a href="/" style={{ fontFamily: font, fontWeight: 500, fontSize: "0.85rem", color: "#6B7280" }} className="transition-colors hover:text-gray-900">Home</a>
-          {navSections.map((l) => (
-            <a key={l.name} href={l.href}
-              style={{ fontFamily: font, fontWeight: 500, fontSize: "0.85rem", color: "#6B7280" }}
-              className="transition-colors hover:text-gray-900"
-            >{l.name}</a>
-          ))}
-          <div className="flex items-center gap-4">
-            <a href="tel:+18004099172" className="text-[#374151] hover:text-[#FF6B00] transition-colors" title="(800) 409-9172"><Phone className="h-5 w-5" /></a>
-            <a href="mailto:sales@sunhub.com" className="text-[#374151] hover:text-[#FF6B00] transition-colors" title="sales@sunhub.com"><Mail className="h-5 w-5" /></a>
-          </div>
-        </div>
-        <button className="text-gray-700 md:hidden" onClick={() => setOpen(!open)}>
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
-      {open && (
-        <div className="md:hidden border-t px-5 py-4 pb-6 bg-white shadow-lg space-y-1">
-          <a href="/" onClick={() => setOpen(false)}
-            className="block py-3 px-2 rounded-md hover:bg-gray-50 transition-colors"
-            style={{ fontFamily: font, fontWeight: 500, fontSize: "0.95rem", color: "#374151" }}
-          >Home</a>
-          {navSections.map((link) => (
-            <a key={link.name} href={link.href} onClick={() => setOpen(false)}
-              className="block py-3 px-2 rounded-md hover:bg-gray-50 transition-colors"
-              style={{ fontFamily: font, fontWeight: 500, fontSize: "0.95rem", color: "#374151" }}
-            >{link.name}</a>
-          ))}
-          <div className="mt-4 flex flex-col gap-3 border-t pt-5 px-2">
-            <a href="tel:+18004099172" className="flex items-center gap-3 text-gray-600 hover:text-[#FF6B00] transition-colors py-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-[#FF6B00]"><Phone className="h-5 w-5" /></div>
-              <span className="font-medium text-[0.95rem]">(800) 409-9172</span>
-            </a>
-            <a href="mailto:sales@sunhub.com" className="flex items-center gap-3 text-gray-600 hover:text-[#FF6B00] transition-colors py-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50 text-[#FF6B00]"><Mail className="h-5 w-5" /></div>
-              <span className="font-medium text-[0.95rem]">sales@sunhub.com</span>
-            </a>
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-}
-
-/* ════════════════════════════════════
-   HERO
+   HERO (matches homepage HeroStrip style)
    ════════════════════════════════════ */
 
 function LiquidationHero({ data }: { data: LiquidationData }) {
-  const counts = [
-    { label: "Residential Modules", count: data.residentialModules.length },
-    { label: "C&I Modules", count: data.ciModules.length },
-    { label: "Inverters", count: data.inverters.length },
-    { label: "Accessories", count: data.accessories.length },
-  ];
+  const totalDeals = data.residentialModules.length + data.ciModules.length + data.inverters.length;
 
-  return (
-    <div style={{ background: "linear-gradient(135deg, #0B2545 0%, #1B3A5C 100%)", padding: "48px 20px", textAlign: "center" }}>
-      <h1 style={{ fontFamily: font, fontWeight: 800, fontSize: "2rem", color: "#fff", marginBottom: 8, letterSpacing: "-0.02em" }}>
-        Liquidation Inventory
-      </h1>
-      <p style={{ fontFamily: font, fontWeight: 400, fontSize: "1rem", color: "#94A3B8", maxWidth: 600, margin: "0 auto 24px" }}>
-        Solar panels, inverters, and accessories at wholesale liquidation prices. Contact us for pricing and availability.
-      </p>
-      <div className="flex flex-wrap justify-center gap-4">
-        {counts.map(({ label, count }) => (
-          <div key={label} style={{ background: "rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 24px", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <span style={{ fontFamily: font, fontWeight: 700, fontSize: "1.4rem", color: "#FF6B00" }}>{count}</span>
-            <span style={{ fontFamily: font, fontWeight: 500, fontSize: "0.82rem", color: "#94A3B8", marginLeft: 8 }}>{label}</span>
-          </div>
-        ))}
+  const dealsMotionValue = useMotionValue(0);
+  const displayDeals = useTransform(dealsMotionValue, (v) =>
+    new Intl.NumberFormat("en-US").format(Math.round(v))
+  );
+  useEffect(() => {
+    if (totalDeals > 0) {
+      const controls = animate(dealsMotionValue, totalDeals, { duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] });
+      return controls.stop;
+    }
+  }, [totalDeals]);
+
+  const formatNumber = (num: number) => new Intl.NumberFormat("en-US").format(Math.round(num));
+
+  const StatBox = ({ title, deals }: { title: string; deals: number }) => (
+    <div className="flex-1 rounded-lg border border-gray-200 bg-[#FAFAFA] overflow-hidden shadow-sm">
+      <div className="bg-[#EBF3FF] py-2 border-b border-gray-200">
+        <h3 className="text-center font-bold text-[#0B2545] text-xs sm:text-sm uppercase tracking-wider">{title}</h3>
+      </div>
+      <div className="flex justify-between items-center py-2 px-4 bg-white">
+        <span className="font-semibold text-gray-800 text-sm">Available Listings</span>
+        <span className="text-gray-600 text-sm">{formatNumber(deals)}</span>
       </div>
     </div>
+  );
+
+  return (
+    <section className="w-full bg-white pb-10 pt-14 md:pt-20 px-4">
+      <div className="mx-auto max-w-[1400px]">
+        <div className="text-center mb-10">
+          <h1 style={{ fontFamily: font, fontWeight: 600, fontSize: "clamp(2rem, 4.5vw, 3.2rem)", color: "#1f2937", letterSpacing: "-0.03em", lineHeight: 1.15 }}>
+            Liquidation Inventory
+          </h1>
+          <p className="mx-auto mt-4 max-w-lg" style={{ fontFamily: font, fontWeight: 500, fontSize: "1.05rem", color: "#6B7280", lineHeight: 1.5 }}>
+            Solar panels, inverters, and equipment at wholesale liquidation prices. Contact us for pricing and availability.
+          </p>
+        </div>
+
+        <div className="max-w-5xl mx-auto mb-12 text-center flex flex-col items-center gap-6">
+          <div className="flex items-center gap-2 px-6 py-2 bg-gray-50 border border-gray-100 rounded-full shadow-inner">
+            <motion.span
+              style={{ width: 8, height: 8, background: "#22c55e", borderRadius: "50%", display: "inline-block" }}
+              animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.span className="text-gray-700 font-bold text-lg">{displayDeals}</motion.span>
+            <span className="text-gray-500 font-medium">Active Listings</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 max-w-5xl mx-auto">
+          <StatBox title="Residential Modules" deals={data.residentialModules.length} />
+          <StatBox title="C&I Modules" deals={data.ciModules.length} />
+          <StatBox title="Inverters" deals={data.inverters.length} />
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -521,113 +482,11 @@ function InvertersSection({ data }: { data: LiquidationInverter[] }) {
 }
 
 /* ════════════════════════════════════
-   ACCESSORIES SECTION
-   ════════════════════════════════════ */
-
-function AccessoriesSection({ data }: { data: LiquidationAccessory[] }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
-  const [brandFilter, setBrandFilter] = useState("All");
-  const [typeFilter, setTypeFilter] = useState("All");
-
-  const brands = useMemo(() => [...new Set(data.map(r => r.brand).filter(Boolean))].sort(), [data]);
-  const types = useMemo(() => [...new Set(data.map(r => r.type).filter(Boolean))].sort(), [data]);
-  const filtered = useMemo(() => data.filter(r => {
-    if (brandFilter !== "All" && r.brand !== brandFilter) return false;
-    if (typeFilter !== "All" && r.type !== typeFilter) return false;
-    return true;
-  }), [data, brandFilter, typeFilter]);
-  const visible = filtered.slice(0, visibleCount);
-  const remaining = filtered.length - visibleCount;
-  const hasFilters = brandFilter !== "All" || typeFilter !== "All";
-
-  return (
-    <section id="liq-accessories" className="scroll-mt-[90px]">
-      <SectionHeading title="Accessories & Components" icon="https://content.app-us1.com/2WDnn/2026/03/02/2ff6fa4c-3f6e-4eac-9d73-80fec3b7c776.png" />
-
-      <div className="mb-6 rounded-xl p-4" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <FilterSelect label="Manufacturer" value={brandFilter} onChange={v => { setBrandFilter(v); setVisibleCount(ITEMS_PER_PAGE); }} options={brands} />
-          <FilterSelect label="Type" value={typeFilter} onChange={v => { setTypeFilter(v); setVisibleCount(ITEMS_PER_PAGE); }} options={types} />
-        </div>
-        {hasFilters && <ClearFiltersBtn onClick={() => { setBrandFilter("All"); setTypeFilter("All"); setVisibleCount(ITEMS_PER_PAGE); }} />}
-      </div>
-
-      {filtered.length === 0 ? <EmptyState message="No accessories match your filters." /> : (
-        <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid #E5E7EB" }}>
-          <table className="w-full md:min-w-[900px]">
-            <thead>
-              <tr>
-                <th style={{ ...thStyle, width: 30 }}></th>
-                <th style={thStyle}>Manufacturer</th>
-                <th style={thStyle}>Model / Part</th>
-                <th style={thStyle} className={H}>Type</th>
-                <th style={thStyle}>Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((r) => {
-                const isExp = expanded === r.id;
-                return (
-                  <React.Fragment key={r.id}>
-                    <tr className="transition-colors hover:bg-amber-50/40">
-                      <td style={tdStyle}>
-                        <ExpandBtn expanded={isExp}
-                          onClick={() => setExpanded(isExp ? null : r.id)}
-                          onExpand={() => track('product_expand', { name: `${r.brand} ${r.model}`, category: 'liquidation-accessories' })}
-                        />
-                      </td>
-                      <td style={tdStyle}>{r.brand}</td>
-                      <td style={tdStyle}>{r.model}</td>
-                      <td style={tdStyle} className={H}>{r.type}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600, color: "#FF6B00" }}>Contact Us</td>
-                    </tr>
-                    <AnimatePresence>
-                      {isExp && (
-                        <tr key={r.id + "-d"}>
-                          <td colSpan={5} style={{ padding: 0 }}>
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-                              style={{ overflow: "hidden" }}
-                            >
-                              <div style={{ padding: "16px 24px", background: "#FAFAFA", borderBottom: "1px solid #F3F4F6" }}>
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
-                                  <div className="md:hidden"><DetailItem label="Type" value={r.type} /></div>
-                                  {r.notes && <DetailItem label="Notes" value={r.notes} />}
-                                </div>
-                                <div className="mt-4 flex justify-end">
-                                  <InquireBtn trackingData={{
-                                    name: `${r.brand} ${r.model}`, part: r.model,
-                                    category: 'Liquidation - Accessories', price: 'Contact Us',
-                                    timestamp: new Date().toISOString(),
-                                  }} />
-                                </div>
-                              </div>
-                            </motion.div>
-                          </td>
-                        </tr>
-                      )}
-                    </AnimatePresence>
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <SectionFooter filtered={filtered.length} total={data.length} />
-      <ShowMoreButton onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} remaining={remaining} itemLabel="accessories" />
-    </section>
-  );
-}
-
-/* ════════════════════════════════════
    MAIN PAGE
    ════════════════════════════════════ */
 
 export default function Liquidation() {
-  const [data, setData] = useState<LiquidationData>({ residentialModules: [], ciModules: [], inverters: [], accessories: [] });
+  const [data, setData] = useState<LiquidationData>({ residentialModules: [], ciModules: [], inverters: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -666,7 +525,7 @@ export default function Liquidation() {
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: font }}>
-      <LiquidationNavbar />
+      <Navbar />
       <LiquidationHero data={data} />
 
       <div className="mx-auto max-w-[1400px] px-5 py-10">
@@ -692,7 +551,6 @@ export default function Liquidation() {
             <ModulesSection id="liq-ci" title="C&I Modules" categoryLabel="Liquidation - C&I Modules"
               data={data.ciModules} />
             <InvertersSection data={data.inverters} />
-            <AccessoriesSection data={data.accessories} />
           </div>
         )}
       </div>
