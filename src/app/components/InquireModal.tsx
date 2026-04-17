@@ -388,8 +388,8 @@ export function InquireModal({ trackingData, onClose }: Props) {
                         style={{ ...inp, flex: 1, padding: '8px 10px', fontSize: '0.83rem', cursor: 'pointer', appearance: 'auto' }}
                       >
                         <option value="units">Units</option>
-                        <option value="pallets">Pallets</option>
-                        <option value="containers">Containers</option>
+                        {Number(trackingData.palletQty) > 0 && <option value="pallets">Pallets</option>}
+                        {Number(trackingData.containerQty) > 0 && <option value="containers">Containers</option>}
                       </select>
                     </div>
                   </motion.div>

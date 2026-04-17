@@ -155,8 +155,8 @@ async function updateContactFields(
   const requestedQty = Number(data.requestedQty ?? 0);
   const unitPrice    = Number(data.unitPrice ?? 0);
   const reqUnit      = String(data.requestedUnit ?? 'units');
-  const mult         = reqUnit === 'pallets' ? Number(data.palletQty ?? 1)
-                      : reqUnit === 'containers' ? Number(data.containerQty ?? 1) : 1;
+  const mult         = reqUnit === 'pallets' ? (Number(data.palletQty) || 1)
+                      : reqUnit === 'containers' ? (Number(data.containerQty) || 1) : 1;
   const leadValue    = requestedQty > 0 && unitPrice > 0
     ? formatCurrency(requestedQty * mult * unitPrice)
     : '';
@@ -229,9 +229,10 @@ async function notifySalesRep(
   const rQty        = Number(data.requestedQty ?? 0);
   const uPrice      = Number(data.unitPrice ?? 0);
   const unit        = String(data.requestedUnit ?? 'units');
-  const multiplier  = unit === 'pallets' ? Number(data.palletQty ?? 1)
-                     : unit === 'containers' ? Number(data.containerQty ?? 1) : 1;
+  const multiplier  = unit === 'pallets' ? (Number(data.palletQty) || 1)
+                     : unit === 'containers' ? (Number(data.containerQty) || 1) : 1;
   const leadValue   = rQty > 0 && uPrice > 0 ? formatCurrency(rQty * multiplier * uPrice) : '';
+  const unitLabel   = unit === 'pallets' ? 'Pallet' : unit === 'containers' ? 'Container' : 'Unit';
   const message     = String(data.message ?? '');
 
   const zohoLink = `https://crm.zoho.com/crm/tab/Leads/${zohoLeadId}`;
@@ -250,7 +251,7 @@ async function notifySalesRep(
           <tr><td style="padding:6px 0;font-weight:600">Email</td><td><a href="mailto:${contact.email}" style="color:#FF6B00">${contact.email}</a></td></tr>
           ${contact.phone ? `<tr><td style="padding:6px 0;font-weight:600">Phone</td><td>${contact.phone}</td></tr>` : ''}
           <tr><td style="padding:6px 0;font-weight:600">Product</td><td>${productName}</td></tr>
-          ${rQty ? `<tr><td style="padding:6px 0;font-weight:600">Qty Requested</td><td>${rQty}</td></tr>` : ''}
+          ${rQty ? `<tr><td style="padding:6px 0;font-weight:600">Qty Requested</td><td>${rQty} ${rQty === 1 ? unitLabel : unitLabel + 's'}</td></tr>` : ''}
           ${leadValue ? `<tr><td style="padding:6px 0;font-weight:600">Lead Value</td><td>${leadValue}</td></tr>` : ''}
           ${message ? `<tr><td style="padding:6px 0;font-weight:600">Message</td><td>${message}</td></tr>` : ''}
           ${productUrl ? `<tr><td style="padding:6px 0;font-weight:600">Product URL</td><td><a href="${productUrl}" style="color:#FF6B00">View Product</a></td></tr>` : ''}
@@ -309,17 +310,20 @@ async function createZohoLead(
   const rQty      = Number(data.requestedQty ?? 0);
   const uPrice    = Number(data.unitPrice ?? 0);
   const unit      = String(data.requestedUnit ?? 'units');
-  const multiplier = unit === 'pallets' ? Number(data.palletQty ?? 1)
-                   : unit === 'containers' ? Number(data.containerQty ?? 1) : 1;
+  const multiplier = unit === 'pallets' ? (Number(data.palletQty) || 1)
+                   : unit === 'containers' ? (Number(data.containerQty) || 1) : 1;
   const leadValueRaw = rQty > 0 && uPrice > 0 ? rQty * multiplier * uPrice : null;
   const lv           = leadValueRaw !== null ? formatCurrency(leadValueRaw) : '';
+  const unitLabel    = unit === 'pallets' ? 'Pallet' : unit === 'containers' ? 'Container' : 'Unit';
+
+  console.log(`[/api/track] Lead value calc: rQty=${rQty}, unit=${unit}, multiplier=${multiplier}, uPrice=${uPrice}, palletQty=${data.palletQty}, containerQty=${data.containerQty}, leadValue=${lv}`);
 
   const inquiryLines = [
     `Product:      ${String(data.name  ?? '')}`,
     `SKU:          ${String(data.sku   ?? '')}`,
     `Price:        ${String(data.price ?? '')}`,
     `Qty (listed): ${String(data.qty   ?? '')}`,
-    rQty ? `Qty (requested): ${rQty}` : '',
+    rQty ? `Qty (requested): ${rQty} ${rQty === 1 ? unitLabel : unitLabel + 's'}` : '',
     lv   ? `Lead Value:      ${lv}`  : '',
     data.message ? `\nMessage: ${String(data.message)}` : '',
   ].filter(Boolean).join('\n');
@@ -391,7 +395,7 @@ async function createZohoLead(
       `Product: ${String(data.name ?? '')}`,
       `SKU: ${String(data.sku ?? '')}`,
       `Price: ${String(data.price ?? '')}`,
-      rQty   ? `Qty requested: ${rQty}` : '',
+      rQty   ? `Qty requested: ${rQty} ${rQty === 1 ? unitLabel : unitLabel + 's'}` : '',
       lv     ? `Lead value: ${lv}` : '',
       String(data.url ?? '') ? `URL: ${String(data.url)}` : '',
       data.message ? `Message: ${String(data.message)}` : '',
@@ -451,7 +455,7 @@ async function createZohoLead(
         `Product: ${String(data.name ?? '')}`,
         `SKU: ${String(data.sku ?? '')}`,
         `Price: ${String(data.price ?? '')}`,
-        rQty ? `Qty requested: ${rQty}` : '',
+        rQty ? `Qty requested: ${rQty} ${rQty === 1 ? unitLabel : unitLabel + 's'}` : '',
         lv   ? `Lead value: ${lv}` : '',
         String(data.url ?? '') ? `URL: ${String(data.url)}` : '',
         data.message ? `Message: ${String(data.message)}` : '',
