@@ -5,17 +5,20 @@
 // 4. Notification email to the assigned sales rep
 
 // ── Sales team (round-robin rotation) ──────────────────────────────────
+// zohoId: grab from Zoho CRM → Settings → Users → click user → ID in URL
 interface SalesRep {
   name: string;
   firstName: string;
   email: string;
+  zohoId?: string;
 }
 
+// NOTE: Asad is first temporarily for testing. Reorder once all IDs are added.
 const SALES_TEAM: SalesRep[] = [
+  { name: 'Asad Marri',      firstName: 'Asad',     email: 'asad@sunhub.com',   zohoId: '4746096000017837001' },
   { name: 'Mitch Bihuniak',  firstName: 'Mitch',   email: 'mitch@sunhub.com'  },
   { name: 'Shoban Alee',     firstName: 'Shoban',   email: 'shoban@sunhub.com' },
   { name: 'Shoaib Younus',   firstName: 'Shoaib',   email: 'shoaib@sunhub.com' },
-  { name: 'Asad Marri',      firstName: 'Asad',     email: 'asad@sunhub.com'   },
   { name: 'Sonia Majeed',    firstName: 'Sonia',    email: 'sonia@sunhub.com'  },
   { name: 'Cody Cooper',     firstName: 'Cody',     email: 'cody@sunhub.com'   },
   { name: 'Hafsa Imran',     firstName: 'Hafsa',    email: 'hafsa@sunhub.com'  },
@@ -203,32 +206,6 @@ async function getZohoToken(): Promise<string | null> {
   if (!data.access_token) { console.error('[/api/track] Zoho token failed:', data); return null; }
   _cachedToken = { value: data.access_token, expiresAt: Date.now() + ((data.expires_in ?? 3600) - 120) * 1000 };
   return _cachedToken.value;
-}
-
-// Cache Zoho user list (email → user ID) so we can assign lead owners
-let _cachedUsers: Map<string, string> | null = null;
-
-async function getZohoUserId(email: string, accessToken: string): Promise<string | null> {
-  if (!_cachedUsers) {
-    _cachedUsers = new Map();
-    try {
-      const res = await fetch('https://www.zohoapis.com/crm/v6/users?type=ActiveUsers', {
-        headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
-      });
-      if (res.ok) {
-        const body = await res.json();
-        for (const u of body.users ?? []) {
-          if (u.email) _cachedUsers.set(u.email.toLowerCase(), u.id);
-        }
-        console.log(`[/api/track] Cached ${_cachedUsers.size} Zoho users`);
-      } else {
-        console.error('[/api/track] Zoho users fetch failed:', res.status);
-      }
-    } catch (err: any) {
-      console.error('[/api/track] Zoho users fetch error:', err?.message);
-    }
-  }
-  return _cachedUsers.get(email.toLowerCase()) ?? null;
 }
 
 // Send notification email to the assigned sales rep via Zoho CRM Send Mail API
@@ -438,12 +415,10 @@ async function createZohoLead(
     // New lead — assign via round-robin
     const assignedRep = await getNextSalesRep();
 
-    // Look up Zoho user ID for the assigned rep
-    const zohoUserId = await getZohoUserId(assignedRep.email, access_token);
-    if (zohoUserId) {
-      lead.Owner = { id: zohoUserId };
+    if (assignedRep.zohoId) {
+      lead.Owner = { id: assignedRep.zohoId };
     } else {
-      console.warn(`[/api/track] No Zoho user found for ${assignedRep.email} — lead will use default owner`);
+      console.warn(`[/api/track] No zohoId for ${assignedRep.email} — lead will use default owner`);
     }
 
     zohoResp = await fetch(`${baseUrl}/Leads`, {
