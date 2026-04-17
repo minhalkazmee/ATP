@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { setTrackedEmail, trackInquiry, captureEmail } from '../services/acTrack';
+import { setTrackedEmail, trackInquiry, captureEmail, type AssignedRep } from '../services/acTrack';
 import { track } from '../services/analytics';
 import { motion, AnimatePresence } from './ui/MotionPresence';
 
@@ -121,6 +121,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
     zip:       localStorage.getItem('ac_zip')     || '',
   });
   const [loading, setLoading] = useState(false);
+  const [assignedRep, setAssignedRep] = useState<AssignedRep | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -151,7 +152,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
       emailKnown:   !!knownEmail,
     });
     try {
-      await trackInquiry({ ...trackingData, ...(form.qty ? { requestedQty: form.qty } : {}) }, {
+      const rep = await trackInquiry({ ...trackingData, ...(form.qty ? { requestedQty: form.qty } : {}) }, {
         firstName: form.firstName,
         lastName:  form.lastName,
         phone:     form.phone,
@@ -160,6 +161,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
         zip:       form.zip,
         message:   form.message,
       } as any);
+      if (rep) setAssignedRep(rep);
       if (form.firstName) localStorage.setItem('ac_first_name', form.firstName);
       if (form.lastName)  localStorage.setItem('ac_last_name',  form.lastName);
       if (form.phone)     localStorage.setItem('ac_phone',      form.phone);
@@ -512,8 +514,17 @@ export function InquireModal({ trackingData, onClose }: Props) {
                   Inquiry sent!
                 </h2>
                 <p style={{ margin: '0 0 24px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', lineHeight: 1.65 }}>
-                  Our team will reach out shortly.<br />
-                  We typically respond within 1 business hour.
+                  {assignedRep ? (
+                    <>
+                      <span style={{ color: '#0B2545', fontWeight: 600 }}>{assignedRep.firstName}</span> will reach out to you shortly.<br />
+                      We typically respond within 1 business hour.
+                    </>
+                  ) : (
+                    <>
+                      Our team will reach out shortly.<br />
+                      We typically respond within 1 business hour.
+                    </>
+                  )}
                 </p>
                 <button onClick={onClose} style={{
                   background: '#F8FAFC', border: '1.5px solid #E2E8F0',

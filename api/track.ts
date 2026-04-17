@@ -1,7 +1,11 @@
 // Vercel serverless function — handles inquiry_clicked events
 // 1. Fires trackcmp.net/event to trigger AC automations
 // 2. Updates AC contact custom fields so email templates get usable tokens
-// 3. (Zoho CRM lead creation — wired in, pending credentials)
+// 3. Zoho CRM lead creation with round-robin owner assignment
+// 4. Notification email to the assigned sales rep
+
+import { getNextSalesRep } from './_round-robin';
+import { SALES_TEAM, type SalesRep } from './_sales-team';
 
 interface ContactProfile {
   id: string;
@@ -137,13 +141,97 @@ async function getZohoToken(): Promise<string | null> {
   return _cachedToken.value;
 }
 
-// Zoho lead creation — plug in once credentials are added to env
+// Send notification email to the assigned sales rep via Zoho CRM Send Mail API
+async function notifySalesRep(
+  rep: SalesRep,
+  contact: ContactProfile,
+  data: Record<string, unknown>,
+  zohoLeadId: string | null,
+  accessToken: string,
+) {
+  if (!zohoLeadId) {
+    console.warn('[/api/track] No Zoho lead ID — skipping sales rep notification');
+    return;
+  }
+
+  const fromEmail = process.env.ZOHO_NOTIFICATION_FROM_EMAIL ?? 'marketing@sunhub.com';
+  const productName = String(data.name ?? 'a product');
+  const productUrl  = String(data.url ?? '');
+  const rQty        = Number(data.requestedQty ?? 0);
+  const uPrice      = Number(data.unitPrice ?? 0);
+  const leadValue   = rQty > 0 && uPrice > 0 ? formatCurrency(rQty * uPrice) : '';
+  const message     = String(data.message ?? '');
+
+  const zohoLink = `https://crm.zoho.com/crm/tab/Leads/${zohoLeadId}`;
+
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+      <div style="background:linear-gradient(135deg,#FF6B00,#FF8533);padding:16px 24px;border-radius:10px 10px 0 0">
+        <h2 style="color:#fff;margin:0;font-size:18px">New Lead Assigned to You</h2>
+      </div>
+      <div style="border:1px solid #E2E8F0;border-top:none;border-radius:0 0 10px 10px;padding:24px">
+        <p style="color:#0B2545;font-size:15px;margin:0 0 16px">
+          Hi ${rep.firstName}, a new inquiry just came in and has been assigned to you.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155">
+          <tr><td style="padding:6px 0;font-weight:600;width:120px">Name</td><td>${contact.firstName} ${contact.lastName}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:600">Email</td><td><a href="mailto:${contact.email}" style="color:#FF6B00">${contact.email}</a></td></tr>
+          ${contact.phone ? `<tr><td style="padding:6px 0;font-weight:600">Phone</td><td>${contact.phone}</td></tr>` : ''}
+          <tr><td style="padding:6px 0;font-weight:600">Product</td><td>${productName}</td></tr>
+          ${rQty ? `<tr><td style="padding:6px 0;font-weight:600">Qty Requested</td><td>${rQty}</td></tr>` : ''}
+          ${leadValue ? `<tr><td style="padding:6px 0;font-weight:600">Lead Value</td><td>${leadValue}</td></tr>` : ''}
+          ${message ? `<tr><td style="padding:6px 0;font-weight:600">Message</td><td>${message}</td></tr>` : ''}
+          ${productUrl ? `<tr><td style="padding:6px 0;font-weight:600">Product URL</td><td><a href="${productUrl}" style="color:#FF6B00">View Product</a></td></tr>` : ''}
+        </table>
+        <div style="margin-top:24px;text-align:center">
+          <a href="${zohoLink}" style="display:inline-block;background:linear-gradient(135deg,#FF6B00,#FF8533);color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">
+            View Lead in Zoho CRM
+          </a>
+        </div>
+      </div>
+    </div>
+  `.trim();
+
+  const subject = `New Lead: ${contact.firstName || ''} ${contact.lastName || 'Unknown'} — ${productName}`;
+
+  try {
+    const emailResp = await fetch(
+      `https://www.zohoapis.com/crm/v6/Leads/${zohoLeadId}/actions/send_mail`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Zoho-oauthtoken ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: [{
+            from: { user_name: 'SunHub ATP', email: fromEmail },
+            to: [{ user_name: rep.name, email: rep.email }],
+            subject,
+            content: html,
+            mail_format: 'html',
+          }],
+        }),
+      },
+    );
+    if (!emailResp.ok) {
+      const body = await emailResp.text();
+      console.error('[/api/track] Zoho Send Mail failed:', emailResp.status, body);
+    } else {
+      console.log(`[/api/track] Notification sent to ${rep.email} via Zoho`);
+    }
+  } catch (err: any) {
+    console.error('[/api/track] Zoho Send Mail error:', err?.message);
+  }
+}
+
+// Zoho lead creation with round-robin owner assignment
 async function createZohoLead(
   contact: ContactProfile,
   data: Record<string, unknown>
-) {
+): Promise<SalesRep | null> {
   const access_token = await getZohoToken();
-  if (!access_token) return;
+  if (!access_token) return null;
 
   // 2. Build lead — mapped to actual Zoho field API names
   const rQty      = Number(data.requestedQty ?? 0);
@@ -182,15 +270,18 @@ async function createZohoLead(
     'Content-Type': 'application/json',
   };
 
-  // Check if lead already exists by email
+  // Check if lead already exists by email (include Owner so we know who's assigned)
   const searchResp = await fetch(
-    `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})&fields=id`,
+    `${baseUrl}/Leads/search?criteria=(Email:equals:${encodeURIComponent(contact.email)})&fields=id,Owner`,
     { headers }
   );
   let existingId: string | null = null;
+  let existingOwner: { name?: string; email?: string } | null = null;
   if (searchResp.status === 200) {
     const searchData = await searchResp.json();
-    existingId = searchData?.data?.[0]?.id ?? null;
+    const firstMatch = searchData?.data?.[0];
+    existingId = firstMatch?.id ?? null;
+    existingOwner = firstMatch?.Owner ?? null;
   }
 
   let zohoResp: Response;
@@ -242,8 +333,22 @@ async function createZohoLead(
       method: 'POST', headers, body: notePayload,
     });
 
+    // Resolve existing owner to a SalesRep (for notification + frontend display)
+    let assignedRep: SalesRep | null = null;
+    if (existingOwner?.email) {
+      assignedRep = SALES_TEAM.find(r => r.email === existingOwner!.email) ?? null;
+    }
+    // If owner isn't in our sales team list, fall back to null (no notification)
+    if (assignedRep) {
+      await notifySalesRep(assignedRep, contact, data, existingId, access_token);
+    }
+    return assignedRep;
+
   } else {
-    // New lead — create with all fields
+    // New lead — assign via round-robin
+    const assignedRep = await getNextSalesRep();
+    lead.Owner = { email: assignedRep.email };
+
     zohoResp = await fetch(`${baseUrl}/Leads`, {
       method: 'POST',
       headers,
@@ -254,28 +359,34 @@ async function createZohoLead(
     const zohoResult = zohoBody?.data?.[0];
     if (zohoResult?.status !== 'success') {
       console.error('[/api/track] Zoho lead create failed:', JSON.stringify(zohoResult));
-    } else {
-      const newLeadId: string | undefined = zohoResult?.details?.id;
-      console.log('[/api/track] Zoho lead created:', newLeadId);
-      // Also write a Note so zoho-sync can compute cumulative lead value consistently
-      if (newLeadId) {
-        const noteLines2 = [
-          `Product: ${String(data.name ?? '')}`,
-          `SKU: ${String(data.sku ?? '')}`,
-          `Price: ${String(data.price ?? '')}`,
-          rQty ? `Qty requested: ${rQty}` : '',
-          lv   ? `Lead value: ${lv}` : '',
-          String(data.url ?? '') ? `URL: ${String(data.url)}` : '',
-          data.message ? `Message: ${String(data.message)}` : '',
-        ].filter(Boolean).join('\n');
-        await fetch(`${baseUrl}/Leads/${newLeadId}/Notes`, {
-          method: 'POST', headers,
-          body: JSON.stringify({
-            data: [{ Note_Title: `Inquiry — ${String(data.name ?? 'product')}`, Note_Content: noteLines2 }],
-          }),
-        });
-      }
+      return assignedRep;  // still return rep even if Zoho failed — UI can show the name
     }
+
+    const newLeadId: string | undefined = zohoResult?.details?.id;
+    console.log(`[/api/track] Zoho lead created: ${newLeadId} → Owner: ${assignedRep.name}`);
+
+    // Write a Note so zoho-sync can compute cumulative lead value consistently
+    if (newLeadId) {
+      const noteLines2 = [
+        `Product: ${String(data.name ?? '')}`,
+        `SKU: ${String(data.sku ?? '')}`,
+        `Price: ${String(data.price ?? '')}`,
+        rQty ? `Qty requested: ${rQty}` : '',
+        lv   ? `Lead value: ${lv}` : '',
+        String(data.url ?? '') ? `URL: ${String(data.url)}` : '',
+        data.message ? `Message: ${String(data.message)}` : '',
+      ].filter(Boolean).join('\n');
+      await fetch(`${baseUrl}/Leads/${newLeadId}/Notes`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          data: [{ Note_Title: `Inquiry — ${String(data.name ?? 'product')}`, Note_Content: noteLines2 }],
+        }),
+      });
+    }
+
+    // Send notification email to the assigned sales rep
+    await notifySalesRep(assignedRep, contact, data, newLeadId ?? null, access_token);
+    return assignedRep;
   }
 }
 
@@ -313,13 +424,20 @@ export default async function handler(req: any, res: any) {
       }).catch(() => {});
     }
 
-    await Promise.all([
+    // Fire AC event + update fields in parallel; Zoho lead creation runs separately
+    // because it needs to return the assigned rep.
+    const [,, assignedRep] = await Promise.all([
       fireEvent(email, data),
       updateContactFields(contact, data),
       createZohoLead(contact, { ...data, message: contactInfo?.message }),
     ]);
 
-    res.status(200).json({ ok: true });
+    res.status(200).json({
+      ok: true,
+      assignedTo: assignedRep
+        ? { name: assignedRep.name, firstName: assignedRep.firstName }
+        : null,
+    });
   } catch (err: any) {
     console.error('[/api/track]', err?.message);
     res.status(500).json({ error: 'Tracking failed' });

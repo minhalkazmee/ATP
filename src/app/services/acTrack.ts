@@ -63,23 +63,32 @@ export interface ContactInfo {
   message?:   string;
 }
 
+export interface AssignedRep {
+  name: string;
+  firstName: string;
+}
+
 export async function trackInquiry(
   data: Record<string, unknown>,
   contactInfo?: ContactInfo,
-): Promise<void> {
+): Promise<AssignedRep | null> {
   const email = localStorage.getItem('ac_email');
-  if (!email) return;
+  if (!email) return null;
   try {
     const resp = await fetch('/api/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, data, contactInfo }),
     });
-    if (resp.ok) return;
+    if (resp.ok) {
+      const body = await resp.json();
+      return body.assignedTo ?? null;
+    }
     throw new Error(`proxy ${resp.status}`);
   } catch {
     // Proxy unavailable (local dev without vercel dev) — fall back to direct event
     await trackEvent('inquiry_clicked', data);
+    return null;
   }
 }
 
