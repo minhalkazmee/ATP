@@ -6,6 +6,7 @@ const links = [
   { name: "Inverters", href: "#inverters" },
   { name: "Storage", href: "#storage" },
   { name: "EV Chargers", href: "#misc" },
+  { name: "Liquidation", href: "/liquidation" },
 ];
 
 export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {

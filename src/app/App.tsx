@@ -12,9 +12,10 @@ import { fetchAllDeals, DealsData } from "./services/sunhubApi";
 import { trackEvent, setTrackedEmail } from "./services/acTrack";
 import { track, initScrollTracking, initTimeTracking } from "./services/analytics";
 import Dashboard from "./pages/Dashboard";
+import Liquidation from "./pages/Liquidation";
 
-// Render dashboard for /dashboard route
-if (window.location.pathname === '/dashboard') {
+// Render dashboard/liquidation for their routes
+if (window.location.pathname === '/dashboard' || window.location.pathname === '/liquidation') {
   const root = document.getElementById('root');
   if (root) root.style.cssText = '';
 }
@@ -35,6 +36,7 @@ const categoryLabels: Record<string, string> = {
 
 export default function App() {
   if (window.location.pathname === '/dashboard') return <Dashboard />;
+  if (window.location.pathname === '/liquidation') return <Liquidation />;
   const [activeTab, setActiveTab] = useState("solar-panels");
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
