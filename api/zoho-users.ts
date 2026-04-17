@@ -22,26 +22,50 @@ export default async function handler(req: any, res: any) {
   const token = await getZohoToken();
   if (!token) return res.status(500).json({ error: 'No Zoho token' });
 
-  // Try multiple user types in case one fails
-  const results: Record<string, unknown> = {};
+  const headers = { Authorization: `Zoho-oauthtoken ${token}` };
 
-  for (const type of ['AllUsers', 'ActiveUsers']) {
-    const resp = await fetch(`https://www.zohoapis.com/crm/v6/users?type=${type}`, {
-      headers: { Authorization: `Zoho-oauthtoken ${token}` },
-    });
-    const body = await resp.json();
-    results[type] = {
-      status: resp.status,
-      users: (body.users ?? []).map((u: any) => ({
-        id: u.id,
-        name: u.full_name ?? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim(),
-        email: u.email,
-        role: u.role?.name,
-        status: u.status,
-      })),
-      error: body.code ?? body.message ?? null,
-    };
+  // Approach: Use COQL (CRM Object Query Language) to get distinct owners from Leads
+  // This uses the modules scope we already have — no users.READ needed.
+  const coqlResp = await fetch('https://www.zohoapis.com/crm/v6/coql', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      select_query: "select Owner from Leads limit 200",
+    }),
+  });
+
+  const coqlBody = await coqlResp.json();
+  const owners = new Map<string, { id: string; name: string; email: string }>();
+
+  if (coqlResp.ok && coqlBody.data) {
+    for (const record of coqlBody.data) {
+      const o = record.Owner;
+      if (o?.id && !owners.has(o.id)) {
+        owners.set(o.id, { id: o.id, name: o.name ?? '', email: o.email ?? '' });
+      }
+    }
   }
 
-  res.status(200).json(results);
+  // Also try fetching a page of leads the normal way as backup
+  const leadsResp = await fetch(
+    'https://www.zohoapis.com/crm/v6/Leads?fields=Owner&per_page=200',
+    { headers },
+  );
+  const leadsBody = await leadsResp.json();
+  if (leadsResp.ok && leadsBody.data) {
+    for (const record of leadsBody.data) {
+      const o = record.Owner;
+      if (o?.id && !owners.has(o.id)) {
+        owners.set(o.id, { id: o.id, name: o.name ?? '', email: o.email ?? '' });
+      }
+    }
+  }
+
+  res.status(200).json({
+    users: Array.from(owners.values()),
+    coql_status: coqlResp.status,
+    coql_error: coqlBody.code ?? null,
+    leads_status: leadsResp.status,
+    leads_error: leadsBody.code ?? null,
+  });
 }
