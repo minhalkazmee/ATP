@@ -24,7 +24,6 @@ const SALES_TEAM: SalesRep[] = [
   { name: 'Marley Kakusa',   firstName: 'Marley',   email: 'marley@sunhub.com', zohoId: '4746096000032407001' },
   { name: 'Neha',            firstName: 'Neha',     email: 'neha@sunhub.com',   zohoId: '4746096000033739001' },
   { name: 'Qasim Bhatti',    firstName: 'Qasim',    email: 'qasim@sunhub.com',  zohoId: '4746096000048960001' },
-  { name: 'Eman Shaikh',     firstName: 'Eman',     email: 'eman@sunhub.com',  zohoId: '4746096000054172001' },
 ];
 
 // ── Round-robin (persisted in Supabase) ────────────────────────────────
