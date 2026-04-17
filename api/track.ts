@@ -13,19 +13,18 @@ interface SalesRep {
   zohoId?: string;
 }
 
-// NOTE: Asad is first temporarily for testing. Reorder once all IDs are added.
 const SALES_TEAM: SalesRep[] = [
+  { name: 'Mitch Bihuniak',  firstName: 'Mitch',   email: 'mitch@sunhub.com',  zohoId: '4746096000000324001' },
+  { name: 'Shoban Alee',     firstName: 'Shoban',   email: 'shoban@sunhub.com', zohoId: '4746096000001781001' },
+  { name: 'Shoaib Younus',   firstName: 'Shoaib',   email: 'shoaib@sunhub.com', zohoId: '4746096000008670001' },
   { name: 'Asad Marri',      firstName: 'Asad',     email: 'asad@sunhub.com',   zohoId: '4746096000017837001' },
-  { name: 'Mitch Bihuniak',  firstName: 'Mitch',   email: 'mitch@sunhub.com'  },
-  { name: 'Shoban Alee',     firstName: 'Shoban',   email: 'shoban@sunhub.com' },
-  { name: 'Shoaib Younus',   firstName: 'Shoaib',   email: 'shoaib@sunhub.com' },
-  { name: 'Sonia Majeed',    firstName: 'Sonia',    email: 'sonia@sunhub.com'  },
-  { name: 'Cody Cooper',     firstName: 'Cody',     email: 'cody@sunhub.com'   },
-  { name: 'Hafsa Imran',     firstName: 'Hafsa',    email: 'hafsa@sunhub.com'  },
-  { name: 'Marley Kakusa',   firstName: 'Marley',   email: 'marley@sunhub.com' },
-  { name: 'Neha',            firstName: 'Neha',     email: 'neha@sunhub.com'   },
-  { name: 'Qasim Bhatti',    firstName: 'Qasim',    email: 'qasim@sunhub.com'  },
-  { name: 'Eman Shaikh',     firstName: 'Eman',     email: 'eman@sunhub.com'   },
+  { name: 'Sonia Majeed',    firstName: 'Sonia',    email: 'sonia@sunhub.com',  zohoId: '4746096000019530001' },
+  { name: 'Cody Cooper',     firstName: 'Cody',     email: 'cody@sunhub.com',  zohoId: '4746096000022636001' },
+  { name: 'Hafsa Imran',     firstName: 'Hafsa',    email: 'hafsa@sunhub.com',  zohoId: '4746096000026883001' },
+  { name: 'Marley Kakusa',   firstName: 'Marley',   email: 'marley@sunhub.com', zohoId: '4746096000032407001' },
+  { name: 'Neha',            firstName: 'Neha',     email: 'neha@sunhub.com',   zohoId: '4746096000033739001' },
+  { name: 'Qasim Bhatti',    firstName: 'Qasim',    email: 'qasim@sunhub.com',  zohoId: '4746096000048960001' },
+  { name: 'Eman Shaikh',     firstName: 'Eman',     email: 'eman@sunhub.com',  zohoId: '4746096000054172001' },
 ];
 
 // ── Round-robin (persisted in Supabase) ────────────────────────────────
