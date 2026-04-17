@@ -50,9 +50,9 @@ const primaryBtn = (disabled = false): React.CSSProperties => ({
 });
 
 const FREE_DOMAINS = new Set([
-  'gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com',
-  'aol.com','live.com','msn.com','protonmail.com','me.com','mac.com',
-  'yahoo.co.uk','googlemail.com',
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
+  'aol.com', 'live.com', 'msn.com', 'protonmail.com', 'me.com', 'mac.com',
+  'yahoo.co.uk', 'googlemail.com',
 ]);
 
 function isBusinessEmail(email: string): boolean {
@@ -90,10 +90,10 @@ const fieldVariants = {
 };
 
 export function InquireModal({ trackingData, onClose }: Props) {
-  const knownEmail     = localStorage.getItem('ac_email');
+  const knownEmail = localStorage.getItem('ac_email');
   const knownFirstName = localStorage.getItem('ac_first_name') || '';
-  const knownLastName  = localStorage.getItem('ac_last_name')  || '';
-  const knownDetails   = !!(knownFirstName && knownLastName);
+  const knownLastName = localStorage.getItem('ac_last_name') || '';
+  const knownDetails = !!(knownFirstName && knownLastName);
 
   const initialStep: Step = knownEmail ? 'message' : 'email';
 
@@ -105,20 +105,20 @@ export function InquireModal({ trackingData, onClose }: Props) {
     if (initialStep === 'message') {
       track('inquiry_step_message', { sku: trackingData.sku, name: trackingData.name });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const moqDefault = parseMoqDefault(trackingData.moq);
   const [form, setForm] = useState({
-    email:     knownEmail     || '',
-    message:   '',
-    qty:       moqDefault.qty,
-    unit:      moqDefault.unit,
+    email: knownEmail || '',
+    message: '',
+    qty: moqDefault.qty,
+    unit: moqDefault.unit,
     firstName: knownFirstName,
-    lastName:  knownLastName,
-    phone:     localStorage.getItem('ac_phone')   || '',
-    company:   localStorage.getItem('ac_company') || '',
-    state:     localStorage.getItem('ac_state')   || '',
-    zip:       localStorage.getItem('ac_zip')     || '',
+    lastName: knownLastName,
+    phone: localStorage.getItem('ac_phone') || '',
+    company: localStorage.getItem('ac_company') || '',
+    state: localStorage.getItem('ac_state') || '',
+    zip: localStorage.getItem('ac_zip') || '',
   });
   const [loading, setLoading] = useState(false);
   const [assignedRep, setAssignedRep] = useState<AssignedRep | null>(null);
@@ -141,34 +141,40 @@ export function InquireModal({ trackingData, onClose }: Props) {
     setLoading(true);
     const rQty = Number(form.qty ?? 0);
     const uPrice = Number(trackingData.unitPrice ?? 0);
-    const leadValue = rQty > 0 && uPrice > 0 ? rQty * uPrice : 0;
+    // Multiply by panels-per-pallet or panels-per-container when applicable
+    const multiplier = form.unit === 'pallets'
+      ? Number(trackingData.palletQty ?? 1)
+      : form.unit === 'containers'
+        ? Number(trackingData.containerQty ?? 1)
+        : 1;
+    const leadValue = rQty > 0 && uPrice > 0 ? rQty * multiplier * uPrice : 0;
     track('inquiry_submitted', {
-      sku:          trackingData.sku,
-      name:         trackingData.name,
-      category:     trackingData.category,
-      qty:          form.qty || null,
-      unit:         form.unit || 'units',
-      leadValue:    leadValue > 0 ? leadValue : null,
-      emailKnown:   !!knownEmail,
+      sku: trackingData.sku,
+      name: trackingData.name,
+      category: trackingData.category,
+      qty: form.qty || null,
+      unit: form.unit || 'units',
+      leadValue: leadValue > 0 ? leadValue : null,
+      emailKnown: !!knownEmail,
     });
     try {
-      const rep = await trackInquiry({ ...trackingData, ...(form.qty ? { requestedQty: form.qty } : {}) }, {
+      const rep = await trackInquiry({ ...trackingData, ...(form.qty ? { requestedQty: form.qty, requestedUnit: form.unit } : {}) }, {
         firstName: form.firstName,
-        lastName:  form.lastName,
-        phone:     form.phone,
-        company:   form.company,
-        state:     form.state,
-        zip:       form.zip,
-        message:   form.message,
+        lastName: form.lastName,
+        phone: form.phone,
+        company: form.company,
+        state: form.state,
+        zip: form.zip,
+        message: form.message,
       } as any);
       if (rep) setAssignedRep(rep);
       if (form.firstName) localStorage.setItem('ac_first_name', form.firstName);
-      if (form.lastName)  localStorage.setItem('ac_last_name',  form.lastName);
-      if (form.phone)     localStorage.setItem('ac_phone',      form.phone);
-      if (form.company)   localStorage.setItem('ac_company',    form.company);
-      if (form.state)     localStorage.setItem('ac_state',      form.state);
-      if (form.zip)       localStorage.setItem('ac_zip',        form.zip);
-    } catch {}
+      if (form.lastName) localStorage.setItem('ac_last_name', form.lastName);
+      if (form.phone) localStorage.setItem('ac_phone', form.phone);
+      if (form.company) localStorage.setItem('ac_company', form.company);
+      if (form.state) localStorage.setItem('ac_state', form.state);
+      if (form.zip) localStorage.setItem('ac_zip', form.zip);
+    } catch { }
     directionRef.current = 1;
     setStep('thanks');
     setLoading(false);
@@ -204,16 +210,16 @@ export function InquireModal({ trackingData, onClose }: Props) {
     await submit();
   };
 
-  const productName  = String(trackingData.name  || '');
-  const productPrice = String(trackingData.price  || '');
-  const productImg   = String(trackingData.img    || '');
+  const productName = String(trackingData.name || '');
+  const productPrice = String(trackingData.price || '');
+  const productImg = String(trackingData.img || '');
 
   // Steps: email(if unknown) → message → details(optional) → thanks
   const steps: Step[] = knownEmail
     ? (knownDetails ? ['message', 'thanks'] : ['message', 'details', 'thanks'])
     : (knownDetails ? ['email', 'message', 'thanks'] : ['email', 'message', 'details', 'thanks']);
   const progressSteps = steps.filter(s => s !== 'thanks');
-  const currentIdx    = progressSteps.indexOf(step);
+  const currentIdx = progressSteps.indexOf(step);
 
   return (
     <motion.div
@@ -364,7 +370,7 @@ export function InquireModal({ trackingData, onClose }: Props) {
                   </motion.div>
                   <motion.div variants={fieldVariants}>
                     <p style={{ margin: '0 0 18px', color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: '0.82rem' }}>
-                      Pricing, availability, lead time — anything. Optional.
+                      Pricing, availability, lead time, anything. Optional.
                     </p>
                   </motion.div>
 

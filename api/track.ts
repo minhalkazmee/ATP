@@ -154,8 +154,11 @@ async function updateContactFields(
 
   const requestedQty = Number(data.requestedQty ?? 0);
   const unitPrice    = Number(data.unitPrice ?? 0);
+  const reqUnit      = String(data.requestedUnit ?? 'units');
+  const mult         = reqUnit === 'pallets' ? Number(data.palletQty ?? 1)
+                      : reqUnit === 'containers' ? Number(data.containerQty ?? 1) : 1;
   const leadValue    = requestedQty > 0 && unitPrice > 0
-    ? formatCurrency(requestedQty * unitPrice)
+    ? formatCurrency(requestedQty * mult * unitPrice)
     : '';
 
   const toUpdate: Record<string, string> = {
@@ -225,7 +228,10 @@ async function notifySalesRep(
   const productUrl  = String(data.url ?? '');
   const rQty        = Number(data.requestedQty ?? 0);
   const uPrice      = Number(data.unitPrice ?? 0);
-  const leadValue   = rQty > 0 && uPrice > 0 ? formatCurrency(rQty * uPrice) : '';
+  const unit        = String(data.requestedUnit ?? 'units');
+  const multiplier  = unit === 'pallets' ? Number(data.palletQty ?? 1)
+                     : unit === 'containers' ? Number(data.containerQty ?? 1) : 1;
+  const leadValue   = rQty > 0 && uPrice > 0 ? formatCurrency(rQty * multiplier * uPrice) : '';
   const message     = String(data.message ?? '');
 
   const zohoLink = `https://crm.zoho.com/crm/tab/Leads/${zohoLeadId}`;
@@ -302,7 +308,10 @@ async function createZohoLead(
   // 2. Build lead — mapped to actual Zoho field API names
   const rQty      = Number(data.requestedQty ?? 0);
   const uPrice    = Number(data.unitPrice ?? 0);
-  const leadValueRaw = rQty > 0 && uPrice > 0 ? rQty * uPrice : null;  // plain number for Zoho currency field
+  const unit      = String(data.requestedUnit ?? 'units');
+  const multiplier = unit === 'pallets' ? Number(data.palletQty ?? 1)
+                   : unit === 'containers' ? Number(data.containerQty ?? 1) : 1;
+  const leadValueRaw = rQty > 0 && uPrice > 0 ? rQty * multiplier * uPrice : null;
   const lv           = leadValueRaw !== null ? formatCurrency(leadValueRaw) : '';
 
   const inquiryLines = [

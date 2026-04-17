@@ -46,6 +46,8 @@ export interface SolarPanel {
   imageUrl: string;
   qtyNum: number;
   wattageNum: number;
+  palletQty: number;
+  containerQty: number;
 }
 
 export interface Inverter {
@@ -328,6 +330,8 @@ function transformPanel(deal: RawDeal): SolarPanel {
     imageUrl: extractImageUrl(deal),
     qtyNum: deal.qoh?.panel ?? deal.totalQty ?? 0,
     wattageNum: wattage,
+    palletQty: palletQty,
+    containerQty: containerQty,
   };
 }
 

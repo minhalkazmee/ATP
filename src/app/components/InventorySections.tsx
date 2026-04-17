@@ -36,6 +36,8 @@ function panelPayload(r: SolarPanel) {
     qty: r.moduleQty,
     moq: r.moq,
     unitPrice: r.pricePerWatt * parseInt(r.wp),
+    palletQty: r.palletQty,
+    containerQty: r.containerQty,
   };
   if (r.imageUrl) p.img = r.imageUrl;
   return p;
