@@ -400,7 +400,7 @@ function InvertersSection({ data }: { data: LiquidationInverter[] }) {
 
   return (
     <section id="liq-inverters" className="scroll-mt-[90px]">
-      <SectionHeading title="Inverters" icon="https://content.app-us1.com/2WDnn/2026/03/02/96471273-6519-4e3c-bf9d-b0c90cc48413.png" />
+      <SectionHeading title="Inverters" />
 
       <div className="mb-6 rounded-xl p-4" style={{ background: "#FAFAFA", border: "1px solid #F3F4F6" }}>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -552,7 +552,6 @@ export default function Liquidation({ scrollTo }: { scrollTo?: string }) {
         ) : (
           <div className="flex flex-col gap-20">
             <ModulesSection id="liq-residential" title="Residential Modules" categoryLabel="Liquidation - Residential Modules"
-              icon="https://content.app-us1.com/2WDnn/2026/03/02/21159a4c-b72a-4c08-9231-367d379f3934.png"
               data={data.residentialModules} />
             <ModulesSection id="liq-ci" title="C&I Modules" categoryLabel="Liquidation - C&I Modules"
               data={data.ciModules} />

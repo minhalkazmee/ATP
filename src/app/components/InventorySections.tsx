@@ -95,12 +95,51 @@ function genericPayload(r: GenericProduct, categoryLabel: string) {
    Section heading icon images
    ════════════════════════════════════ */
 
-const sectionIcons: Record<string, string | null> = {
-  "solar-panels": "https://content.app-us1.com/2WDnn/2026/03/02/21159a4c-b72a-4c08-9231-367d379f3934.png",
-  inverters: "https://content.app-us1.com/2WDnn/2026/03/02/96471273-6519-4e3c-bf9d-b0c90cc48413.png",
-  storage: "https://content.app-us1.com/2WDnn/2026/03/02/5f4b52b9-8c65-439a-8a0c-589ed06f6473.png",
-  racking: null,
-  accessories: "https://content.app-us1.com/2WDnn/2026/03/02/2ff6fa4c-3f6e-4eac-9d73-80fec3b7c776.png",
+const S = "#4B5563";
+
+const sectionIcons: Record<string, React.ReactNode> = {
+  "solar-panels": (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={S} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="13" rx="1" />
+      <line x1="8" y1="6" x2="8" y2="19" />
+      <line x1="16" y1="6" x2="16" y2="19" />
+      <line x1="2" y1="12.5" x2="22" y2="12.5" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="8" y1="22" x2="16" y2="22" />
+    </svg>
+  ),
+  inverters: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={S} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <circle cx="8" cy="12" r="2" />
+      <line x1="14" y1="10" x2="19" y2="10" />
+      <line x1="14" y1="14" x2="19" y2="14" />
+    </svg>
+  ),
+  storage: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={S} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="18" height="10" rx="2" />
+      <path d="M22 11v2" />
+      <line x1="7" y1="12" x2="11" y2="12" />
+      <line x1="9" y1="10" x2="9" y2="14" />
+    </svg>
+  ),
+  racking: (
+    <svg width="28" height="28" viewBox="0 0 48 48" fill="none" stroke={S} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 34 L24 12 L38 34" />
+      <line x1="14" y1="28" x2="34" y2="28" />
+      <line x1="8" y1="40" x2="40" y2="40" />
+      <line x1="17" y1="34" x2="17" y2="40" />
+      <line x1="31" y1="34" x2="31" y2="40" />
+    </svg>
+  ),
+  accessories: (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={S} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+  ),
 };
 
 /* ════════════════════════════════════
@@ -325,20 +364,17 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 interface SectionProps { id: string; title: string; children: React.ReactNode; }
 
 const Section = forwardRef<HTMLElement, SectionProps>(({ id, title, children }, ref) => {
-  const iconUrl = sectionIcons[id];
   return (
     <section ref={ref} id={id} className="scroll-mt-[90px]">
       <div className="mb-8 flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-          {iconUrl ? (
-            <img src={iconUrl} alt={title} width={28} height={28} style={{ objectFit: "contain" }} />
-          ) : (
-            <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 34 L24 12 L38 34" stroke="#4B5563" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
-              <line x1="14" y1="28" x2="34" y2="28" stroke="#4B5563" strokeWidth="1.5" />
-              <line x1="8" y1="40" x2="40" y2="40" stroke="#4B5563" strokeWidth="1.5" />
-              <line x1="17" y1="34" x2="17" y2="40" stroke="#4B5563" strokeWidth="1.5" />
-              <line x1="31" y1="34" x2="31" y2="40" stroke="#4B5563" strokeWidth="1.5" />
+          {sectionIcons[id] ?? (
+            <svg width="28" height="28" viewBox="0 0 48 48" fill="none" stroke="#4B5563" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 34 L24 12 L38 34" />
+              <line x1="14" y1="28" x2="34" y2="28" />
+              <line x1="8" y1="40" x2="40" y2="40" />
+              <line x1="17" y1="34" x2="17" y2="40" />
+              <line x1="31" y1="34" x2="31" y2="40" />
             </svg>
           )}
         </div>
