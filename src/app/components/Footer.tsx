@@ -28,16 +28,32 @@ export function Footer() {
           >
             sales@sunhub.com
           </a>
-          <span
-            style={{
-              fontFamily: font,
-              fontWeight: 400,
-              fontSize: "0.72rem",
-              color: "rgba(255,255,255,0.3)",
-            }}
-          >
-            &copy; 2026 Sunhub, Inc. All rights reserved.
-          </span>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <span
+              style={{
+                fontFamily: font,
+                fontWeight: 400,
+                fontSize: "0.72rem",
+                color: "rgba(255,255,255,0.3)",
+              }}
+            >
+              &copy; 2026 Sunhub, Inc. All rights reserved.
+            </span>
+            <a
+              href="https://www.sunhub.com/privacy-notice"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: font,
+                fontWeight: 400,
+                fontSize: "0.72rem",
+                color: "rgba(255,255,255,0.3)",
+              }}
+              className="hover:text-white transition-colors"
+            >
+              Privacy Policy
+            </a>
+          </div>
         </div>
       </div>
     </footer>
