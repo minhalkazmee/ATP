@@ -27,7 +27,7 @@ export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
         {/* Logo */}
-        <a href="https://www.sunhubatp.com" className="flex items-center">
+        <a href="/" className="flex items-center">
           <img
             src="https://www.sunhub.com/assets/images/revamp/logo.svg"
             alt="Sunhub"
