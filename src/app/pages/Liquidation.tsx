@@ -485,7 +485,7 @@ function InvertersSection({ data }: { data: LiquidationInverter[] }) {
    MAIN PAGE
    ════════════════════════════════════ */
 
-export default function Liquidation() {
+export default function Liquidation({ scrollTo }: { scrollTo?: string }) {
   const [data, setData] = useState<LiquidationData>({ residentialModules: [], ciModules: [], inverters: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -518,6 +518,12 @@ export default function Liquidation() {
         setError(err.message || 'Failed to load liquidation inventory');
       } finally {
         setLoading(false);
+        if (scrollTo) {
+          setTimeout(() => {
+            const el = document.getElementById(scrollTo);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
       }
     })();
     track('page_view', { page: 'liquidation', url: window.location.href, timestamp: new Date().toISOString() });

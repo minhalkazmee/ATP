@@ -14,8 +14,17 @@ import { track, initScrollTracking, initTimeTracking } from "./services/analytic
 import Dashboard from "./pages/Dashboard";
 import Liquidation from "./pages/Liquidation";
 
+const liquidationSubRoutes: Record<string, string> = {
+  '/liquidation/residential-modules': 'liq-residential',
+  '/liquidation/commercial-modules': 'liq-ci',
+  '/liquidation/inverters': 'liq-inverters',
+};
+
+const _path = window.location.pathname;
+const isLiquidationRoute = _path === '/liquidation' || _path.startsWith('/liquidation/');
+
 // Render dashboard/liquidation for their routes
-if (window.location.pathname === '/dashboard' || window.location.pathname === '/liquidation') {
+if (window.location.pathname === '/dashboard' || isLiquidationRoute) {
   const root = document.getElementById('root');
   if (root) root.style.cssText = '';
 }
@@ -36,7 +45,7 @@ const categoryLabels: Record<string, string> = {
 
 export default function App() {
   if (window.location.pathname === '/dashboard') return <Dashboard />;
-  if (window.location.pathname === '/liquidation') return <Liquidation />;
+  if (isLiquidationRoute) return <Liquidation scrollTo={liquidationSubRoutes[window.location.pathname]} />;
   const [activeTab, setActiveTab] = useState("solar-panels");
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);

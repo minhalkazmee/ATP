@@ -8,17 +8,23 @@ const homeLinks = [
   { name: "EV Chargers", hash: "misc" },
 ];
 
+const liquidationLinks = [
+  { name: "Residential Modules", href: "/liquidation/residential-modules" },
+  { name: "C&I Modules", href: "/liquidation/commercial-modules" },
+  { name: "Inverters", href: "/liquidation/inverters" },
+];
+
 export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
   const [open, setOpen] = useState(false);
-  const isLiquidation = window.location.pathname === "/liquidation";
+  const pathname = window.location.pathname;
+  const isLiquidation = pathname === "/liquidation" || pathname.startsWith("/liquidation/");
 
-  const links = [
-    ...homeLinks.map(({ name, hash }) => ({
-      name,
-      href: isLiquidation ? `/#${hash}` : `#${hash}`,
-    })),
-    { name: "Liquidation", href: "/liquidation" },
-  ];
+  const links = isLiquidation
+    ? [...liquidationLinks, { name: "← Back to Home", href: "/" }]
+    : [
+        ...homeLinks.map(({ name, hash }) => ({ name, href: `#${hash}` })),
+        { name: "Liquidation", href: "/liquidation" },
+      ];
 
   return (
     <nav
