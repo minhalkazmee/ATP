@@ -1,16 +1,24 @@
 import { useState } from "react";
 import { Menu, X, Phone, Mail, SlidersHorizontal } from "lucide-react";
 
-const links = [
-  { name: "Solar Panels", href: "#solar-panels" },
-  { name: "Inverters", href: "#inverters" },
-  { name: "Storage", href: "#storage" },
-  { name: "EV Chargers", href: "#misc" },
-  { name: "Liquidation", href: "/liquidation" },
+const homeLinks = [
+  { name: "Solar Panels", hash: "solar-panels" },
+  { name: "Inverters", hash: "inverters" },
+  { name: "Storage", hash: "storage" },
+  { name: "EV Chargers", hash: "misc" },
 ];
 
 export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
   const [open, setOpen] = useState(false);
+  const isLiquidation = window.location.pathname === "/liquidation";
+
+  const links = [
+    ...homeLinks.map(({ name, hash }) => ({
+      name,
+      href: isLiquidation ? `/#${hash}` : `#${hash}`,
+    })),
+    { name: "Liquidation", href: "/liquidation" },
+  ];
 
   return (
     <nav
@@ -19,7 +27,7 @@ export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
         {/* Logo */}
-        <a href="#" className="flex items-center">
+        <a href="https://www.sunhubatp.com" className="flex items-center">
           <img
             src="https://www.sunhub.com/assets/images/revamp/logo.svg"
             alt="Sunhub"

@@ -5,7 +5,7 @@ export function Footer() {
     <footer id="footer" style={{ background: "#0B2545", height: "80px" }}>
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-5">
         {/* Logo */}
-        <a href="#" className="flex items-center">
+        <a href="https://www.sunhubatp.com" className="flex items-center">
           <img
             src="https://www.sunhub.com/assets/images/revamp/logo.svg"
             alt="Sunhub"
