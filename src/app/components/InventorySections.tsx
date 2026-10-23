@@ -512,7 +512,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
           <FilterSelect label="Cell / Panel Type" value={filters.productType} onChange={(v) => setFilters({ ...filters, productType: v })} options={uniqueVals("type")} trackCat="solar-panels" trackField="cellType" />
           <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="solar-panels" trackField="manufacturer" />
-          <FilterRange label="Pmax" sublabel="(W, min and max)" min={filters.wpMin} max={filters.wpMax} onMinChange={(v) => setFilters({ ...filters, wpMin: v })} onMaxChange={(v) => setFilters({ ...filters, wpMax: v })} minPlaceholder="0" maxPlaceholder="No max" />
+          <FilterRange label="Pmax" sublabel="(W, min and max)" min={filters.wpMin} max={filters.wpMax} onMinChange={(v) => setFilters({ ...filters, wpMin: v })} onMaxChange={(v) => setFilters({ ...filters, wpMax: v })} minPlaceholder="0" maxPlaceholder="Any wattage" />
           <FilterRange label="Price/W" sublabel="($/W)" min={filters.priceWMin} max={filters.priceWMax} onMinChange={(v) => setFilters({ ...filters, priceWMin: v })} onMaxChange={(v) => setFilters({ ...filters, priceWMax: v })} minPlaceholder="0.000" maxPlaceholder="" />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
