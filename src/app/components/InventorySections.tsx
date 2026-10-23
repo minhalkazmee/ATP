@@ -277,10 +277,13 @@ function FilterSelect({ label, sublabel, value, onChange, options, trackCat, tra
         {label}
         {sublabel && <span style={{ fontWeight: 400, fontSize: "0.68rem", color: "#9CA3AF", marginLeft: 4 }}>{sublabel}</span>}
       </label>
-      <select aria-label={label} value={value} onChange={(e) => handleChange(e.target.value)} style={{ ...inputStyle, cursor: "pointer", appearance: "auto" }}>
-        <option value="All">All</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
+      <div style={{ position: "relative" }}>
+        <select aria-label={label} value={value} onChange={(e) => handleChange(e.target.value)} style={{ ...inputStyle, cursor: "pointer", appearance: "none", paddingRight: 36 }}>
+          <option value="All">All</option>
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <ChevronDown aria-hidden="true" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "#374151", pointerEvents: "none" }} />
+      </div>
     </div>
   );
 }
