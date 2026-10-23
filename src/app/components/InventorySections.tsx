@@ -2,7 +2,7 @@ import React, { forwardRef, useState, useMemo, useEffect, useCallback, useRef } 
 import { InquireModal } from "./InquireModal";
 import { trackEvent, trackInquiry } from "../services/acTrack";
 import { track } from "../services/analytics";
-import { Plus, Minus, ArrowUpDown, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Minus, ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronDown } from "lucide-react";
 import { AvailabilityBadge } from "./AvailabilityBadge";
 import { motion, AnimatePresence } from "./ui/MotionPresence";
 import { type WatchlistPrefs } from "./WatchlistDrawer";
@@ -14,6 +14,8 @@ import {
   type GenericProduct,
   type DealsData,
 } from "../services/sunhubApi";
+
+import { sortInventory } from "../utils/sortInventory";
 
 type Availability = "Available Now" | "Inbound" | "Contact Us";
 const font = "Inter, sans-serif";
@@ -275,7 +277,7 @@ function FilterSelect({ label, sublabel, value, onChange, options, trackCat, tra
         {label}
         {sublabel && <span style={{ fontWeight: 400, fontSize: "0.68rem", color: "#9CA3AF", marginLeft: 4 }}>{sublabel}</span>}
       </label>
-      <select value={value} onChange={(e) => handleChange(e.target.value)} style={{ ...inputStyle, cursor: "pointer", appearance: "auto" }}>
+      <select aria-label={label} value={value} onChange={(e) => handleChange(e.target.value)} style={{ ...inputStyle, cursor: "pointer", appearance: "auto" }}>
         <option value="All">All</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -293,8 +295,8 @@ function FilterRange({ label, sublabel, min, max, onMinChange, onMaxChange, minP
         {sublabel && <span style={{ fontWeight: 400, fontSize: "0.68rem", color: "#9CA3AF", marginLeft: 4 }}>{sublabel}</span>}
       </label>
       <div className="flex gap-2">
-        <input type="text" value={min} onChange={(e) => onMinChange(e.target.value)} placeholder={minPlaceholder || "0"} style={inputStyle} />
-        <input type="text" value={max} onChange={(e) => onMaxChange(e.target.value)} placeholder={maxPlaceholder || ""} style={inputStyle} />
+        <input type="number" min="0" step="any" aria-label={`${label} minimum`} value={min} onChange={(e) => onMinChange(e.target.value)} placeholder={minPlaceholder || "0"} style={inputStyle} />
+        <input type="number" min="0" step="any" aria-label={`${label} maximum`} value={max} onChange={(e) => onMaxChange(e.target.value)} placeholder={maxPlaceholder || ""} style={inputStyle} />
       </div>
     </div>
   );
@@ -317,13 +319,27 @@ function ExpandBtn({ expanded, onClick, onExpand }: { expanded: boolean; onClick
   );
 }
 
-function SortHeader({ children, sup, className }: { children: React.ReactNode; sup?: string; className?: string }) {
+function useInventorySort<T>(rows: T[]) {
+  const [sort, setSort] = useState<{ key: keyof T; direction: "asc" | "desc" } | null>(null);
+  const sorted = useMemo(() => sortInventory(rows, sort), [rows, sort]);
+  const sortProps = (key: keyof T) => ({
+    direction: sort?.key === key ? sort.direction : undefined,
+    onSort: () => setSort(current => ({ key, direction: current?.key === key && current.direction === "asc" ? "desc" : "asc" })),
+  });
+  return { sorted, sortProps };
+}
+
+function SortHeader({ children, sup, className, direction, onSort }: {
+  children: React.ReactNode; sup?: string; className?: string;
+  direction?: "asc" | "desc"; onSort: () => void;
+}) {
+  const Icon = direction === "asc" ? ArrowUp : direction === "desc" ? ArrowDown : ArrowUpDown;
   return (
-    <th style={thStyle} className={className}>
-      <div className="flex items-center gap-1 cursor-pointer select-none group">
+    <th style={thStyle} className={className} aria-sort={direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none"}>
+      <button type="button" onClick={onSort} className="flex items-center gap-1 cursor-pointer select-none rounded focus-visible:outline-2 focus-visible:outline-orange-500" title={`Sort ${direction === "asc" ? "descending" : "ascending"}`}>
         <span>{children}{sup && <sup style={{ fontSize: "0.55rem", color: "#9CA3AF" }}>{sup}</sup>}</span>
-        <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" style={{ color: "#9CA3AF" }} />
-      </div>
+        <Icon aria-hidden="true" className="h-3 w-3" style={{ color: direction ? "#FF6B00" : "#9CA3AF" }} />
+      </button>
     </th>
   );
 }
@@ -483,7 +499,8 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
     });
   }, [filters, data, prefs]);
 
-  const visibleData = filtered.slice(0, visibleCount);
+  const { sorted, sortProps } = useInventorySort(filtered);
+  const visibleData = sorted.slice(0, visibleCount);
   const remaining = filtered.length - visibleCount;
 
   return (
@@ -492,7 +509,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
           <FilterSelect label="Cell / Panel Type" value={filters.productType} onChange={(v) => setFilters({ ...filters, productType: v })} options={uniqueVals("type")} trackCat="solar-panels" trackField="cellType" />
           <FilterSelect label="Manufacturer" value={filters.manufacturer} onChange={(v) => setFilters({ ...filters, manufacturer: v })} options={uniqueVals("brand")} trackCat="solar-panels" trackField="manufacturer" />
-          <FilterRange label="Pmax" sublabel="(min and max)" min={filters.wpMin} max={filters.wpMax} onMinChange={(v) => setFilters({ ...filters, wpMin: v })} onMaxChange={(v) => setFilters({ ...filters, wpMax: v })} minPlaceholder="0" maxPlaceholder="700" />
+          <FilterRange label="Pmax" sublabel="(W, min and max)" min={filters.wpMin} max={filters.wpMax} onMinChange={(v) => setFilters({ ...filters, wpMin: v })} onMaxChange={(v) => setFilters({ ...filters, wpMax: v })} minPlaceholder="0" maxPlaceholder="No max" />
           <FilterRange label="Price/W" sublabel="($/W)" min={filters.priceWMin} max={filters.priceWMax} onMinChange={(v) => setFilters({ ...filters, priceWMin: v })} onMaxChange={(v) => setFilters({ ...filters, priceWMax: v })} minPlaceholder="0.000" maxPlaceholder="" />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
@@ -517,10 +534,10 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
               <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number<span style={thSub}>Click to view datasheet</span></th>
               <th style={thStyle} className={H}>Cell Type</th>
-              <SortHeader sup="1">Wp</SortHeader>
-              <SortHeader sup="2"><span className="hidden md:inline">Price/W</span><span className="md:hidden">$/W</span></SortHeader>
-              <SortHeader className={H} sup="3">Total Qty</SortHeader>
-              <SortHeader className={H}>Pallets</SortHeader>
+              <SortHeader {...sortProps("wattageNum")} sup="1">Wp</SortHeader>
+              <SortHeader {...sortProps("pricePerWatt")} sup="2"><span className="hidden md:inline">Price/W</span><span className="md:hidden">$/W</span></SortHeader>
+              <SortHeader {...sortProps("qtyNum")} className={H} sup="3">Total Qty</SortHeader>
+              <SortHeader {...sortProps("palletsRemaining")} className={H}>Pallets</SortHeader>
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability<sup style={{ fontSize: "0.55rem", color: "#9CA3AF" }}>7</sup></th>
               <th style={thStyle} className={H}>Location</th>
@@ -641,7 +658,8 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
     });
   }, [filters, data, prefs]);
 
-  const visibleData = filtered.slice(0, visibleCount);
+  const { sorted, sortProps } = useInventorySort(filtered);
+  const visibleData = sorted.slice(0, visibleCount);
   const remaining = filtered.length - visibleCount;
 
   return (
@@ -664,9 +682,9 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
               <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Type</th>
-              <SortHeader>Power</SortHeader>
-              <SortHeader>Price</SortHeader>
-              <SortHeader className={H}>Total Qty</SortHeader>
+              <SortHeader {...sortProps("wattageNum")}>Power</SortHeader>
+              <SortHeader {...sortProps("priceNum")}>Price</SortHeader>
+              <SortHeader {...sortProps("qtyNum")} className={H}>Total Qty</SortHeader>
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability</th>
               <th style={thStyle} className={H}>Location</th>
@@ -768,7 +786,8 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
     });
   }, [filters, data, prefs]);
 
-  const visibleData = filtered.slice(0, visibleCount);
+  const { sorted, sortProps } = useInventorySort(filtered);
+  const visibleData = sorted.slice(0, visibleCount);
   const remaining = filtered.length - visibleCount;
 
   return (
@@ -790,9 +809,9 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
               <th style={thStyle}>Manufacturer</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Chemistry</th>
-              <SortHeader>Capacity</SortHeader>
-              <SortHeader>Price</SortHeader>
-              <SortHeader className={H}>Total Qty</SortHeader>
+              <SortHeader {...sortProps("capacityNum")}>Capacity</SortHeader>
+              <SortHeader {...sortProps("priceNum")}>Price</SortHeader>
+              <SortHeader {...sortProps("qtyNum")} className={H}>Total Qty</SortHeader>
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability</th>
               <th style={thStyle} className={H}>Location</th>
@@ -889,7 +908,8 @@ function GenericProductSection({
     return data.filter(r => prefs.brands.some(b => r.brand?.toLowerCase().includes(b.toLowerCase())));
   }, [data, prefs]);
 
-  const visibleData = filteredData.slice(0, visibleCount);
+  const { sorted, sortProps } = useInventorySort(filteredData);
+  const visibleData = sorted.slice(0, visibleCount);
   const remaining = filteredData.length - visibleCount;
 
   return (
@@ -905,8 +925,8 @@ function GenericProductSection({
                 <th style={thStyle}>Manufacturer</th>
                 <th style={thStyle} className={H}>Part Number</th>
                 <th style={thStyle} className={H}>Category</th>
-                <SortHeader>Price</SortHeader>
-                <SortHeader className={H}>Total Qty</SortHeader>
+                <SortHeader {...sortProps("priceNum")}>Price</SortHeader>
+                <SortHeader {...sortProps("qtyNum")} className={H}>Total Qty</SortHeader>
                 <th style={thStyle} className={H}>MOQ</th>
                 <th style={thStyle} className={H}>Availability</th>
                 <th style={thStyle} className={H}>Location</th>
