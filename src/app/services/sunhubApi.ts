@@ -447,6 +447,7 @@ async function fetchCategory(
     const firstResp = await fetch(url(1), {
       headers: { Accept: "application/json" },
     });
+    if (!firstResp.ok) throw new Error(`Inventory request failed (${firstResp.status})`);
     const firstData: ApiResponse = await firstResp.json();
     const totalPages = firstData.pagination.totalPages;
 
@@ -454,20 +455,25 @@ async function fetchCategory(
     onPage(firstData.data);
     const allDeals: RawDeal[] = [...firstData.data];
 
-    // Fetch remaining pages – can be done in parallel or sequentially
-    // Let's do sequential to be safe with server load, but now we are streaming!
-    for (let page = 2; page <= totalPages; page++) {
-      const resp = await fetch(url(page), {
-        headers: { Accept: "application/json" },
-      });
-      const data: ApiResponse = await resp.json();
-      onPage(data.data);
-      allDeals.push(...data.data);
+    // Request a few pages at once so a large category does not hold up the UI.
+    // Preserve page order for stable inventory rows.
+    for (let start = 2; start <= totalPages; start += 3) {
+      const pages = Array.from({ length: Math.min(3, totalPages - start + 1) }, (_, index) => start + index);
+      const batches = await Promise.all(pages.map(async (page) => {
+        const resp = await fetch(url(page), { headers: { Accept: "application/json" } });
+        if (!resp.ok) throw new Error(`Inventory request failed (${resp.status})`);
+        const data: ApiResponse = await resp.json();
+        return data.data;
+      }));
+      for (const deals of batches) {
+        onPage(deals);
+        allDeals.push(...deals);
+      }
     }
     return allDeals;
   } catch (err) {
     console.error(`Error in fetchCategory(${category}):`, err);
-    return [];
+    throw err;
   }
 }
 

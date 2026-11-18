@@ -27,7 +27,7 @@ export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
       ];
 
   return (
-    <nav
+    <nav aria-label="Main navigation"
       className="sticky top-0 z-50 bg-white"
       style={{ borderBottom: "1px solid #E5E7EB" }}
     >
@@ -59,7 +59,7 @@ export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
             </a>
           ))}
           <div className="flex items-center gap-4">
-            <button
+            <button type="button" aria-label="Open my watchlist"
               onClick={onOpenWatchlist}
               className="flex items-center gap-2 transition-all hover:brightness-105 active:scale-95"
               style={{
@@ -81,28 +81,28 @@ export function Navbar({ onOpenWatchlist }: { onOpenWatchlist?: () => void }) {
             <a
               href="tel:+18004099172"
               className="text-[#374151] hover:text-[#FF6B00] transition-colors"
-              title="(800) 409-9172"
+              aria-label="Call Sunhub at (800) 409-9172"
             >
               <Phone className="h-5 w-5" />
             </a>
             <a
               href="mailto:sales@sunhub.com"
               className="text-[#374151] hover:text-[#FF6B00] transition-colors"
-              title="sales@sunhub.com"
+              aria-label="Email sales at Sunhub"
             >
               <Mail className="h-5 w-5" />
             </a>
           </div>
         </div>
 
-        <button className="text-gray-700 md:hidden" onClick={() => setOpen(!open)}>
+        <button type="button" className="text-gray-700 md:hidden" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(!open)}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {/* Mobile menu content */}
       {open && (
-        <div className="md:hidden border-t px-5 py-4 pb-6 bg-white shadow-lg space-y-1">
+        <div id="mobile-navigation" className="md:hidden border-t px-5 py-4 pb-6 bg-white shadow-lg space-y-1">
           {links.map((link) => (
             <a
               key={link.name}

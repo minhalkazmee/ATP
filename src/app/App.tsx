@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { AnimatePresence } from "./components/ui/MotionPresence";
 import { Navbar } from "./components/Navbar";
 import { HeroStrip } from "./components/HeroStrip";
@@ -11,8 +11,8 @@ import { ProfilePopup } from "./components/ProfilePopup";
 import { fetchAllDeals, DealsData } from "./services/sunhubApi";
 import { trackEvent, setTrackedEmail } from "./services/acTrack";
 import { track, initScrollTracking, initTimeTracking } from "./services/analytics";
-import Dashboard from "./pages/Dashboard";
-import Liquidation from "./pages/Liquidation";
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Liquidation = lazy(() => import("./pages/Liquidation"));
 
 const liquidationSubRoutes: Record<string, string> = {
   '/liquidation/residential-modules': 'liq-residential',
@@ -44,8 +44,8 @@ const categoryLabels: Record<string, string> = {
 
 
 export default function App() {
-  if (window.location.pathname === '/dashboard') return <Dashboard />;
-  if (isLiquidationRoute) return <Liquidation scrollTo={liquidationSubRoutes[window.location.pathname]} />;
+  if (window.location.pathname === '/dashboard') return <Suspense fallback={<div role="status" className="p-8">Loading dashboard…</div>}><Dashboard /></Suspense>;
+  if (isLiquidationRoute) return <Suspense fallback={<div role="status" className="p-8">Loading liquidation deals…</div>}><Liquidation scrollTo={liquidationSubRoutes[window.location.pathname]} /></Suspense>;
   const [activeTab, setActiveTab] = useState("solar-panels");
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -162,7 +162,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: "Inter, sans-serif" }}>
       <Navbar onOpenWatchlist={() => setWatchlistOpen(true)} />
-      {!prefs.focusMode && <HeroStrip data={data} loading={loading} />}
+      {!prefs.focusMode && <HeroStrip data={data} loading={loading} error={error} />}
       {!prefs.focusMode && <CategoryTabs active={activeTab} onTabClick={handleTabClick} />}
       <InventorySections refs={refs} data={data} loading={loading} error={error} onRetry={loadData} prefs={prefs} onInquireOpenChange={v => { inquireOpenRef.current = v; }} />
       {!prefs.focusMode && <FAQSection />}

@@ -1020,6 +1020,9 @@ export function InventorySections({ refs, data, loading, error, onRetry, prefs, 
     _onInquireOpenChange = onInquireOpenChange ?? null;
     return () => { _onInquireOpenChange = null; };
   }, [onInquireOpenChange]);
+  if (loading && data && Object.values(data).every(items => items.length === 0)) {
+    return <div role="status" className="mx-auto max-w-[1400px] px-5 py-10 text-sm text-gray-600">Loading current inventory…</div>;
+  }
   if (error || !data) {
     return (
       <div className="mx-auto max-w-[1400px] px-5 py-10">
@@ -1032,6 +1035,7 @@ export function InventorySections({ refs, data, loading, error, onRetry, prefs, 
 
   return (
     <div className="mx-auto max-w-[1400px] px-5 py-10">
+      {loading && <div role="status" className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">Loading current inventory… Results will appear as they arrive.</div>}
       <div className="flex flex-col gap-20">
         {!hidden.includes("solar-panels") && <SolarPanelsSection sectionRef={refs["solar-panels"]} data={data.panels} prefs={prefs} />}
         {!hidden.includes("inverters") && <InvertersSection sectionRef={refs["inverters"]} data={data.inverters} prefs={prefs} />}
