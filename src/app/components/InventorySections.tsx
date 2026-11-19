@@ -536,7 +536,6 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
-              <th style={thStyle}>Inquiry</th>
               <th style={thStyle} className={H}>Part Number<span style={thSub}>Click to view datasheet</span></th>
               <th style={thStyle} className={H}>Cell Type</th>
               <SortHeader {...sortProps("wattageNum")} sup="1">Wp</SortHeader>
@@ -546,6 +545,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability<sup style={{ fontSize: "0.55rem", color: "#9CA3AF" }}>7</sup></th>
               <th style={thStyle} className={H}>Location</th>
+              <th style={thStyle}>Inquiry</th>
             </tr>
           </thead>
           <tbody>
@@ -560,7 +560,6 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
                 <tr className="transition-colors hover:bg-amber-50/40">
                   <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = panelPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'solar-panels' }); }} /></td>
                   <td style={tdStyle}>{r.brand}</td>
-                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={panelPayload(r)} compact /></td>
                   <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'solar-panels' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.type}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.wp}</td>
@@ -570,6 +569,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
                   <td style={tdStyle} className={H}>{r.moq}</td>
                   <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
                   <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
+                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={panelPayload(r)} compact /></td>
                 </tr>
                 <AnimatePresence>
                   {expanded === r.sku && (
@@ -602,9 +602,6 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
                                 <DetailItem label="Dimensions" value={r.dims} />
                                 {r.windLoad ? <DetailItem label="Wind Load" value={r.windLoad} /> : null}
                                 {r.snowLoad ? <DetailItem label="Snow Load" value={r.snowLoad} /> : null}
-                              </div>
-                              <div className="shrink-0 lg:pb-0.5">
-                                <InquireBtn partNum={r.partNum || r.brand} trackingData={panelPayload(r)} />
                               </div>
                             </div>
                           </div>
@@ -686,7 +683,6 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
-              <th style={thStyle}>Inquiry</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Type</th>
               <SortHeader {...sortProps("wattageNum")}>Power</SortHeader>
@@ -695,6 +691,7 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability</th>
               <th style={thStyle} className={H}>Location</th>
+              <th style={thStyle}>Inquiry</th>
             </tr>
           </thead>
           <tbody>
@@ -709,7 +706,6 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
                 <tr className="transition-colors hover:bg-amber-50/40">
                   <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = inverterPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'inverters' }); }} /></td>
                   <td style={tdStyle}>{r.brand}</td>
-                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={inverterPayload(r)} compact /></td>
                   <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'inverters' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.type}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.power}</td>
@@ -718,6 +714,7 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
                   <td style={tdStyle} className={H}>{r.moq}</td>
                   <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
                   <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
+                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={inverterPayload(r)} compact /></td>
                 </tr>
                 <AnimatePresence>
                   {expanded === r.sku && (
@@ -746,9 +743,6 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
                                 <DetailItem label="Weight" value={r.weight} />
                                 <DetailItem label="Dimensions" value={r.dims} />
                                 <DetailItem label="Features" value={r.features} />
-                              </div>
-                              <div className="shrink-0 lg:pb-0.5">
-                                <InquireBtn partNum={r.partNum || r.brand} trackingData={inverterPayload(r)} />
                               </div>
                             </div>
                           </div>
@@ -815,7 +809,6 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
-              <th style={thStyle}>Inquiry</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Chemistry</th>
               <SortHeader {...sortProps("capacityNum")}>Capacity</SortHeader>
@@ -824,6 +817,7 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
               <th style={thStyle} className={H}>MOQ</th>
               <th style={thStyle} className={H}>Availability</th>
               <th style={thStyle} className={H}>Location</th>
+              <th style={thStyle}>Inquiry</th>
             </tr>
           </thead>
           <tbody>
@@ -838,7 +832,6 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
                 <tr className="transition-colors hover:bg-amber-50/40">
                   <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = storagePayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'storage' }); }} /></td>
                   <td style={tdStyle}>{r.brand}</td>
-                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={storagePayload(r)} compact /></td>
                   <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'storage' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.chemistry}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.capacity}</td>
@@ -847,6 +840,7 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
                   <td style={tdStyle} className={H}>{r.moq}</td>
                   <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
                   <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
+                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={storagePayload(r)} compact /></td>
                 </tr>
                 <AnimatePresence>
                   {expanded === r.sku && (
@@ -872,9 +866,6 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
                               <DetailItem label="Weight" value={r.weight} />
                               <DetailItem label="Dimensions" value={r.dims} />
                               <DetailItem label="Features" value={r.features} />
-                            </div>
-                            <div className="mt-4 flex justify-end">
-                              <InquireBtn partNum={r.partNum || r.brand} trackingData={storagePayload(r)} />
                             </div>
                           </div>
                         </motion.div>
@@ -933,7 +924,6 @@ function GenericProductSection({
               <tr>
                 <th style={{ ...thStyle, width: 30 }}></th>
                 <th style={thStyle}>Manufacturer</th>
-                <th style={thStyle}>Inquiry</th>
                 <th style={thStyle} className={H}>Part Number</th>
                 <th style={thStyle} className={H}>Category</th>
                 <SortHeader {...sortProps("priceNum")}>Price</SortHeader>
@@ -941,6 +931,7 @@ function GenericProductSection({
                 <th style={thStyle} className={H}>MOQ</th>
                 <th style={thStyle} className={H}>Availability</th>
                 <th style={thStyle} className={H}>Location</th>
+                <th style={thStyle}>Inquiry</th>
               </tr>
             </thead>
             <tbody>
@@ -949,7 +940,6 @@ function GenericProductSection({
                   <tr className="transition-colors hover:bg-amber-50/40">
                     <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = genericPayload(r, id); trackEvent('product_expanded', p); track('product_expand', { ...p, category: id }); }} /></td>
                     <td style={tdStyle}>{r.brand}</td>
-                    <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={genericPayload(r, id)} compact /></td>
                     <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: id })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                     <td style={tdStyle} className={H}>{r.category}</td>
                     <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
@@ -957,6 +947,7 @@ function GenericProductSection({
                     <td style={tdStyle} className={H}>{r.moq}</td>
                     <td style={tdStyle} className={H}><AvailabilityBadge status={r.avail} /></td>
                     <td style={tdStyle} className={H}>{r.state}, {r.zip}</td>
+                    <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={genericPayload(r, id)} compact /></td>
                   </tr>
                   <AnimatePresence>
                     {expanded === r.sku && (
@@ -981,9 +972,6 @@ function GenericProductSection({
                                 <DetailItem label="Weight" value={r.weight} />
                                 <DetailItem label="Dimensions" value={r.dims} />
                                 {r.category ? <DetailItem label="Category" value={r.category} /> : null}
-                              </div>
-                              <div className="mt-4 flex justify-end">
-                                <InquireBtn partNum={r.partNum || r.brand} trackingData={genericPayload(r, id)} />
                               </div>
                             </div>
                           </motion.div>
