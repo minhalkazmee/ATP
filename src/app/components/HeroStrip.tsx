@@ -8,7 +8,6 @@ interface HeroStripProps {
 }
 
 export function HeroStrip({ data, loading, error }: HeroStripProps) {
-  const showTotals = !loading && !error;
   let panelsDeals = 0, panelsMws = 0, panelsQty = 0;
   let invertersDeals = 0, invertersMws = 0, invertersQty = 0;
   let storageDeals = 0, storageMws = 0, storageQty = 0;
@@ -45,6 +44,9 @@ export function HeroStrip({ data, loading, error }: HeroStripProps) {
 
   const totalMws = panelsMws + invertersMws + storageMws;
   const totalDeals = panelsDeals + invertersDeals + storageDeals + otherDealsCount;
+  // Display the running total as streamed pages arrive, while keeping the
+  // initial empty state distinct from an actual inventory count of zero.
+  const showTotals = totalDeals > 0 || (!loading && !error);
 
   const StatBox = ({ title, deals, mws, qty }: { title: string, deals: number, mws: number, qty: number }) => (
     <div className="flex-1 rounded-lg border border-gray-200 bg-[#FAFAFA] overflow-hidden shadow-sm">

@@ -215,7 +215,7 @@ function ClearFiltersBtn({ onClick }: { onClick: () => void }) {
 // Module-level — only one InventorySections instance is mounted; avoids deep prop drilling
 let _onInquireOpenChange: ((open: boolean) => void) | null = null;
 
-function InquireBtn({ partNum, trackingData }: { partNum: string; trackingData?: Record<string, unknown> }) {
+function InquireBtn({ partNum, trackingData, compact = false }: { partNum: string; trackingData?: Record<string, unknown>; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => {
     setOpen(false);
@@ -233,19 +233,20 @@ function InquireBtn({ partNum, trackingData }: { partNum: string; trackingData?:
         />
         <button
           onClick={() => { setOpen(true); _onInquireOpenChange?.(true); }}
-          className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
+          aria-label={`Inquire about ${partNum}`}
+          className={`inline-flex items-center gap-2 rounded-lg transition-all hover:brightness-105 active:scale-95 ${compact ? "px-3 py-2" : "px-5 py-1.5"}`}
           style={{
             background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
             color: "#fff",
             fontFamily: font,
             fontWeight: 700,
-            fontSize: "0.8rem",
+            fontSize: compact ? "0.75rem" : "0.8rem",
             border: "none",
             cursor: "pointer",
             boxShadow: "0 2px 6px rgba(255, 107, 0, 0.12)",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg className={compact ? "hidden lg:block" : undefined} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
           </svg>
           Inquire Now
@@ -535,6 +536,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
+              <th style={thStyle}>Inquiry</th>
               <th style={thStyle} className={H}>Part Number<span style={thSub}>Click to view datasheet</span></th>
               <th style={thStyle} className={H}>Cell Type</th>
               <SortHeader {...sortProps("wattageNum")} sup="1">Wp</SortHeader>
@@ -549,7 +551,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={13} style={{ padding: "40px 20px", textAlign: "center" }}>
+                <td colSpan={12} style={{ padding: "40px 20px", textAlign: "center" }}>
                   <p style={{ fontFamily: font, fontWeight: 500, fontSize: "0.9rem", color: "#9CA3AF" }}>No modules match your filters.</p>
                 </td>
               </tr>
@@ -558,6 +560,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
                 <tr className="transition-colors hover:bg-amber-50/40">
                   <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = panelPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'solar-panels' }); }} /></td>
                   <td style={tdStyle}>{r.brand}</td>
+                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={panelPayload(r)} compact /></td>
                   <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'solar-panels' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.type}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.wp}</td>
@@ -571,7 +574,7 @@ function SolarPanelsSection({ sectionRef, data, prefs }: { sectionRef: React.Ref
                 <AnimatePresence>
                   {expanded === r.sku && (
                     <tr key={r.sku + "-detail"}>
-                      <td colSpan={13} style={{ padding: 0 }}>
+                      <td colSpan={12} style={{ padding: 0 }}>
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -683,6 +686,7 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
+              <th style={thStyle}>Inquiry</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Type</th>
               <SortHeader {...sortProps("wattageNum")}>Power</SortHeader>
@@ -705,6 +709,7 @@ function InvertersSection({ sectionRef, data, prefs }: { sectionRef: React.RefOb
                 <tr className="transition-colors hover:bg-amber-50/40">
                   <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = inverterPayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'inverters' }); }} /></td>
                   <td style={tdStyle}>{r.brand}</td>
+                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={inverterPayload(r)} compact /></td>
                   <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'inverters' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.type}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.power}</td>
@@ -810,6 +815,7 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
             <tr>
               <th style={{ ...thStyle, width: 30 }}></th>
               <th style={thStyle}>Manufacturer</th>
+              <th style={thStyle}>Inquiry</th>
               <th style={thStyle} className={H}>Part Number</th>
               <th style={thStyle} className={H}>Chemistry</th>
               <SortHeader {...sortProps("capacityNum")}>Capacity</SortHeader>
@@ -832,6 +838,7 @@ function StorageSection({ sectionRef, data, prefs }: { sectionRef: React.RefObje
                 <tr className="transition-colors hover:bg-amber-50/40">
                   <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = storagePayload(r); trackEvent('product_expanded', p); track('product_expand', { ...p, category: 'storage' }); }} /></td>
                   <td style={tdStyle}>{r.brand}</td>
+                  <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={storagePayload(r)} compact /></td>
                   <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: 'storage' })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                   <td style={tdStyle} className={H}>{r.chemistry}</td>
                   <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.capacity}</td>
@@ -926,6 +933,7 @@ function GenericProductSection({
               <tr>
                 <th style={{ ...thStyle, width: 30 }}></th>
                 <th style={thStyle}>Manufacturer</th>
+                <th style={thStyle}>Inquiry</th>
                 <th style={thStyle} className={H}>Part Number</th>
                 <th style={thStyle} className={H}>Category</th>
                 <SortHeader {...sortProps("priceNum")}>Price</SortHeader>
@@ -941,6 +949,7 @@ function GenericProductSection({
                   <tr className="transition-colors hover:bg-amber-50/40">
                     <td style={tdStyle}><ExpandBtn expanded={expanded === r.sku} onClick={() => setExpanded(expanded === r.sku ? null : r.sku)} onExpand={() => { const p = genericPayload(r, id); trackEvent('product_expanded', p); track('product_expand', { ...p, category: id }); }} /></td>
                     <td style={tdStyle}>{r.brand}</td>
+                    <td style={tdStyle}><InquireBtn partNum={r.partNum || r.brand} trackingData={genericPayload(r, id)} compact /></td>
                     <td style={tdStyle} className={H}>{r.datasheetUrl ? <a href={r.datasheetUrl} target="_blank" rel="noreferrer" onClick={() => track('datasheet_click', { sku: r.sku, name: r.title, category: id })} style={{ ...linkStyle, textDecoration: "underline", textUnderlineOffset: "2px" }} title="View Datasheet">{r.partNum}</a> : <span style={linkStyle}>{r.partNum}</span>}</td>
                     <td style={tdStyle} className={H}>{r.category}</td>
                     <td style={{ ...tdStyle, fontWeight: 600, color: "#1f2937" }}>{r.price}</td>
@@ -952,7 +961,7 @@ function GenericProductSection({
                   <AnimatePresence>
                     {expanded === r.sku && (
                       <tr key={r.sku + "-d"}>
-                        <td colSpan={9} style={{ padding: 0 }}>
+                        <td colSpan={10} style={{ padding: 0 }}>
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
