@@ -91,15 +91,17 @@ function InquireBtn({ trackingData }: { trackingData: Record<string, unknown> })
           transition={{ duration: 0.5, ease: "easeOut" }}
         />
         <button
+          type="button"
+          aria-label={`Inquire about ${trackingData.name}`}
           onClick={() => { setOpen(true); _onInquireOpenChange?.(true); }}
-          className="inline-flex items-center gap-2 rounded-lg px-5 py-1.5 transition-all hover:brightness-105 active:scale-95"
+          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 transition-all hover:brightness-105 active:scale-95"
           style={{
             background: "linear-gradient(135deg, #FF6B00 0%, #FF8533 100%)",
             color: "#fff", fontFamily: font, fontWeight: 700, fontSize: "0.8rem",
             border: "none", cursor: "pointer", boxShadow: "0 2px 6px rgba(255, 107, 0, 0.12)",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="hidden lg:block" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z" />
           </svg>
           Inquire Now
@@ -110,6 +112,21 @@ function InquireBtn({ trackingData }: { trackingData: Record<string, unknown> })
       </AnimatePresence>
     </>
   );
+}
+
+function moduleInquiryData(r: LiquidationModule, category: string): Record<string, unknown> {
+  return {
+    sku: r.id, name: `${r.brand} ${r.partNum}`, part: r.partNum,
+    category, price: 'Contact Us', power: r.power, totalWatts: r.totalWatts,
+  };
+}
+
+function inverterInquiryData(r: LiquidationInverter): Record<string, unknown> {
+  return {
+    sku: r.id, name: `${r.brand} ${r.model}`, part: r.model,
+    category: 'Liquidation - Inverters', price: 'Contact Us',
+    type: r.type, power: r.power,
+  };
 }
 
 function ExpandBtn({ expanded, onClick, onExpand }: { expanded: boolean; onClick: () => void; onExpand?: () => void }) {
@@ -315,7 +332,7 @@ function ModulesSection({ id, title, icon, data, categoryLabel }: {
                 <th style={thStyle}>Part Number</th>
                 <th style={thStyle} className={H}>Power</th>
                 <th style={thStyle} className={H}>Total Watts</th>
-                <th style={thStyle}>Price</th>
+                <th style={thStyle}>Inquiry</th>
               </tr>
             </thead>
             <tbody>
@@ -334,7 +351,7 @@ function ModulesSection({ id, title, icon, data, categoryLabel }: {
                       <td style={tdStyle}>{r.partNum}</td>
                       <td style={tdStyle} className={H}>{r.power}</td>
                       <td style={tdStyle} className={H}>{r.totalWatts}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600, color: "#FF6B00" }}>Contact Us</td>
+                      <td style={tdStyle}><InquireBtn trackingData={moduleInquiryData(r, categoryLabel)} /></td>
                     </tr>
                     <AnimatePresence>
                       {isExp && (
@@ -350,13 +367,6 @@ function ModulesSection({ id, title, icon, data, categoryLabel }: {
                                   <div className="md:hidden"><DetailItem label="Power" value={r.power} /></div>
                                   <div className="md:hidden"><DetailItem label="Total Watts" value={r.totalWatts} /></div>
                                   {r.notes && <DetailItem label="Notes" value={r.notes} />}
-                                </div>
-                                <div className="mt-4 flex justify-end">
-                                  <InquireBtn trackingData={{
-                                    name: `${r.brand} ${r.partNum}`, part: r.partNum,
-                                    category: categoryLabel, price: 'Contact Us',
-                                    timestamp: new Date().toISOString(),
-                                  }} />
                                 </div>
                               </div>
                             </motion.div>
@@ -420,7 +430,7 @@ function InvertersSection({ data }: { data: LiquidationInverter[] }) {
                 <th style={thStyle}>Model</th>
                 <th style={thStyle} className={H}>Type</th>
                 <th style={thStyle} className={H}>Power</th>
-                <th style={thStyle}>Price</th>
+                <th style={thStyle}>Inquiry</th>
               </tr>
             </thead>
             <tbody>
@@ -439,7 +449,7 @@ function InvertersSection({ data }: { data: LiquidationInverter[] }) {
                       <td style={tdStyle}>{r.model}</td>
                       <td style={tdStyle} className={H}>{r.type}</td>
                       <td style={tdStyle} className={H}>{r.power}</td>
-                      <td style={{ ...tdStyle, fontWeight: 600, color: "#FF6B00" }}>Contact Us</td>
+                      <td style={tdStyle}><InquireBtn trackingData={inverterInquiryData(r)} /></td>
                     </tr>
                     <AnimatePresence>
                       {isExp && (
@@ -454,13 +464,6 @@ function InvertersSection({ data }: { data: LiquidationInverter[] }) {
                                 <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:flex md:flex-wrap md:gap-x-12 md:gap-y-3">
                                   <div className="md:hidden"><DetailItem label="Type" value={r.type} /></div>
                                   <div className="md:hidden"><DetailItem label="Power" value={r.power} /></div>
-                                </div>
-                                <div className="mt-4 flex justify-end">
-                                  <InquireBtn trackingData={{
-                                    name: `${r.brand} ${r.model}`, part: r.model,
-                                    category: 'Liquidation - Inverters', price: 'Contact Us',
-                                    timestamp: new Date().toISOString(),
-                                  }} />
                                 </div>
                               </div>
                             </motion.div>
