@@ -6,6 +6,7 @@ import { track } from "../services/analytics";
 import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { ProfilePopup } from "../components/ProfilePopup";
+import { useIdleEmailPrompt } from "../hooks/useIdleEmailPrompt";
 
 /* ════════════════════════════════════
    TYPES
@@ -500,16 +501,7 @@ export default function Liquidation({ scrollTo }: { scrollTo?: string }) {
     return () => { _onInquireOpenChange = null; };
   }, []);
 
-  useEffect(() => {
-    const completed = localStorage.getItem('atp_profile');
-    const dismissed = sessionStorage.getItem('atp_profile_dismissed');
-    if (!completed && !dismissed) {
-      const t = setTimeout(() => {
-        if (!inquireOpenRef.current) setProfileOpen(true);
-      }, 30000);
-      return () => clearTimeout(t);
-    }
-  }, []);
+  useIdleEmailPrompt(profileOpen, setProfileOpen, inquireOpenRef);
 
   useEffect(() => {
     (async () => {

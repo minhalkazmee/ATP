@@ -1,656 +1,107 @@
-import { useState, useRef } from 'react';
-import { X, Check } from 'lucide-react';
-import { trackEvent, captureEmail } from '../services/acTrack';
-import { motion, AnimatePresence } from './ui/MotionPresence';
-
-type Role = 'buyer' | 'seller';
-type Step = 'role' | 'details' | 'contact' | 'thanks';
-
-const font = 'Inter, sans-serif';
-
-const inp: React.CSSProperties = {
-  width: '100%',
-  background: '#F8FAFC',
-  border: '1.5px solid #E2E8F0',
-  borderRadius: 8,
-  color: '#0B2545',
-  fontFamily: font,
-  fontSize: '0.875rem',
-  padding: '10px 14px',
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
-const label: React.CSSProperties = {
-  display: 'block',
-  fontFamily: font,
-  fontSize: '0.72rem',
-  fontWeight: 700,
-  color: '#64748B',
-  marginBottom: 8,
-  letterSpacing: '0.5px',
-  textTransform: 'uppercase',
-};
-
-const primaryBtn: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 0',
-  border: 'none',
-  borderRadius: 10,
-  background: 'linear-gradient(135deg,#FF6B00,#FF8533)',
-  color: '#fff',
-  fontFamily: font,
-  fontWeight: 700,
-  fontSize: '0.9rem',
-  cursor: 'pointer',
-  boxShadow: '0 3px 12px rgba(255,107,0,0.22)',
-};
-
-const BUYER_TYPES = [
-  { id: 'installer',  label: 'Installer / Contractor' },
-  { id: 'developer',  label: 'Commercial Developer' },
-  { id: 'homeowner',  label: 'Homeowner / DIY' },
-  { id: 'investor',   label: 'Investor / Reseller' },
-  { id: 'other',      label: 'Other' },
-];
-
-const TIMELINES = [
-  { id: 'now',       label: 'Ready to buy now' },
-  { id: 'soon',      label: 'Within 1–3 months' },
-  { id: 'exploring', label: 'Just exploring' },
-];
-
-const VOLUMES = [
-  { id: 'small',  label: 'Under $10k' },
-  { id: 'medium', label: '$10k – $100k' },
-  { id: 'large',  label: '$100k+' },
-];
-
-const SELL_CATS = [
-  { id: 'solar-panels',  label: 'Solar Panels' },
-  { id: 'inverters',     label: 'Inverters' },
-  { id: 'storage',       label: 'Storage' },
-  { id: 'racking',       label: 'Racking' },
-  { id: 'accessories',   label: 'Accessories' },
-  { id: 'other',         label: 'Other' },
-];
-
-const INV_VALUES = [
-  { id: 'small',  label: 'Under $50k' },
-  { id: 'medium', label: '$50k – $500k' },
-  { id: 'large',  label: '$500k+' },
-];
-
-/* Step slide variants (directional) */
-const stepVariants = {
-  enter: (dir: number) => ({ x: dir * 28, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir * -28, opacity: 0 }),
-};
-
-function RadioPills({ options, value, onChange }: {
-  options: { id: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-      {options.map(o => {
-        const active = value === o.id;
-        return (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => onChange(o.id)}
-            style={{
-              padding: '7px 13px',
-              borderRadius: 20,
-              border: active ? '1.5px solid #FF6B00' : '1.5px solid #E2E8F0',
-              background: active ? '#FFF4EB' : '#F8FAFC',
-              color: active ? '#FF6B00' : '#64748B',
-              fontFamily: font,
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.13s',
-            }}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function CheckPills({ options, value, onChange }: {
-  options: { id: string; label: string }[];
-  value: string[];
-  onChange: (v: string[]) => void;
-}) {
-  const toggle = (id: string) =>
-    onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-      {options.map(o => {
-        const active = value.includes(o.id);
-        return (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => toggle(o.id)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '7px 13px',
-              borderRadius: 20,
-              border: active ? '1.5px solid #FF6B00' : '1.5px solid #E2E8F0',
-              background: active ? '#FFF4EB' : '#F8FAFC',
-              color: active ? '#FF6B00' : '#64748B',
-              fontFamily: font,
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.13s',
-            }}
-          >
-            {active && <Check size={11} strokeWidth={3} />}
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
+import { captureEmail, setTrackedEmail, trackInquiry } from '../services/acTrack';
+import { track } from '../services/analytics';
+import { motion } from './ui/MotionPresence';
 
 interface Props {
   onClose: () => void;
 }
 
 export function ProfilePopup({ onClose }: Props) {
-  // What we already know
-  const knownEmail   = localStorage.getItem('ac_email')      || '';
-  const knownPhone   = localStorage.getItem('ac_phone')      || '';
-  const knownCompany = localStorage.getItem('ac_company')    || '';
-  const knownFirst   = localStorage.getItem('ac_first_name') || '';
-  const knownLast    = localStorage.getItem('ac_last_name')  || '';
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  // Fields still missing (determines whether contact step shows)
-  const needEmail   = !knownEmail;
-  const needPhone   = !knownPhone;
-  const needCompany = !knownCompany;
-  const needName    = !knownFirst || !knownLast;
-  const needContact = needEmail || needPhone || needCompany || needName;
-
-  const [step, setStep] = useState<Step>('role');
-  const [role, setRole] = useState<Role | null>(null);
-  const directionRef = useRef(1);
-
-  // Buyer fields
-  const [buyerType, setBuyerType] = useState('');
-  const [timeline, setTimeline]   = useState('');
-  const [volume, setVolume]       = useState('');
-
-  // Seller fields
-  const [company, setCompany]         = useState('');
-  const [sells, setSells]             = useState<string[]>([]);
-  const [inventoryValue, setInventory] = useState('');
-
-  // Contact enrichment fields (pre-fill what we have)
-  const [email, setEmail]         = useState(knownEmail);
-  const [phone, setPhone]         = useState(knownPhone);
-  const [contactCompany, setContactCompany] = useState(knownCompany);
-  const [firstName, setFirstName] = useState(knownFirst);
-  const [lastName, setLastName]   = useState(knownLast);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') dismiss(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   const dismiss = () => {
-    // Only suppress for this session — show again on next visit until completed
     sessionStorage.setItem('atp_profile_dismissed', '1');
     onClose();
   };
 
-  const saveProfile = (extra: Record<string, unknown> = {}) => {
-    localStorage.setItem('atp_profile', JSON.stringify({
-      role,
-      buyerType,
-      timeline,
-      volume,
-      company,
-      sells,
-      inventoryValue,
-      completedAt: new Date().toISOString(),
-      ...extra,
-    }));
-  };
-
-  const fireAC = (resolvedEmail: string) => {
-    const payload =
-      role === 'buyer'
-        ? { role: 'buyer', buyerType, timeline, volume, timestamp: new Date().toISOString() }
-        : { role: 'seller', company, sells: sells.join(','), inventoryValue, timestamp: new Date().toISOString() };
-
-    trackEvent('profile_completed', payload);
-    if (resolvedEmail) captureEmail(resolvedEmail, payload);
-  };
-
-  const handleDetailsNext = () => {
-    // For sellers, company name comes from their details step — use it as contactCompany
-    if (role === 'seller' && company && !knownCompany) setContactCompany(company);
-
-    if (needContact) {
-      directionRef.current = 1;
-      setStep('contact');
-    } else {
-      saveProfile();
-      fireAC(knownEmail);
-      directionRef.current = 1;
-      setStep('thanks');
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (sending) return;
+    setSending(true);
+    const address = email.trim();
+    const data = {
+      name: 'Help finding inventory',
+      category: 'Inventory sourcing request',
+      url: window.location.href,
+      timestamp: new Date().toISOString(),
+    };
+    setTrackedEmail(address);
+    captureEmail(address, data);
+    track('inventory_help_requested', { source: 'idle_popup' });
+    try {
+      await trackInquiry(data);
+    } finally {
+      sessionStorage.setItem('atp_profile_dismissed', '1');
+      setSent(true);
+      setSending(false);
     }
   };
-
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Persist newly collected fields
-    if (email)        localStorage.setItem('ac_email',      email);
-    if (phone)        localStorage.setItem('ac_phone',      phone);
-    if (contactCompany) localStorage.setItem('ac_company',  contactCompany);
-    if (firstName)    localStorage.setItem('ac_first_name', firstName);
-    if (lastName)     localStorage.setItem('ac_last_name',  lastName);
-    saveProfile();
-    fireAC(email || knownEmail);
-    directionRef.current = 1;
-    setStep('thanks');
-  };
-
-  // Progress dots (role step not counted)
-  const dotsSteps: Step[] = needContact ? ['details', 'contact'] : ['details'];
-  const currentDotIdx = dotsSteps.indexOf(step);
-
-  const buyerReady = buyerType && timeline;
-  const sellerReady = company.trim() && sells.length > 0 && inventoryValue;
 
   return (
     <motion.div
       onClick={dismiss}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(11,37,69,0.4)',
-        backdropFilter: 'blur(5px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16,
-      }}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(11,37,69,0.4)',
+        backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
     >
       <motion.div
-        onClick={e => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.97 }}
-        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-        style={{
-          background: '#fff',
-          borderRadius: 18,
-          width: '100%',
-          maxWidth: 480,
+        role="dialog" aria-modal="true" aria-labelledby="inventory-help-title"
+        onClick={event => event.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.18 }}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 480,
           boxShadow: '0 24px 64px rgba(11,37,69,0.16), 0 4px 16px rgba(0,0,0,0.06)',
-          border: '1px solid #EEF2F7',
-          overflow: 'hidden',
-          position: 'relative',
-        }}
+          border: '1px solid #EEF2F7', overflow: 'hidden', position: 'relative', fontFamily: 'Inter, sans-serif' }}
       >
-        {/* Accent bar */}
         <div style={{ height: 3, background: 'linear-gradient(90deg,#FF6B00,#FF8533)' }} />
-
-        {/* Close */}
-        <button onClick={dismiss} style={{
-          position: 'absolute', top: 13, right: 13,
-          background: '#F1F5F9', border: '1px solid #E2E8F0',
-          color: '#94A3B8', borderRadius: 7, width: 28, height: 28,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <X size={13} />
-        </button>
-
-        <div style={{ padding: '22px 26px 26px' }}>
-
-          {/* Progress dots — only visible on details/email steps */}
-          {step !== 'role' && step !== 'thanks' && dotsSteps.length > 1 && (
-            <div style={{ display: 'flex', gap: 5, marginBottom: 20 }}>
-              {dotsSteps.map((_, i) => (
-                <motion.div key={i}
-                  animate={{ background: i <= currentDotIdx ? '#FF6B00' : '#EEF2F7' }}
-                  transition={{ duration: 0.2 }}
-                  style={{
-                    height: 2, flex: 1, borderRadius: 2,
-                  }}
-                />
-              ))}
+        <button type="button" onClick={dismiss} aria-label="Close" style={{
+          position: 'absolute', top: 13, right: 13, background: '#F1F5F9', border: '1px solid #E2E8F0',
+          color: '#64748B', borderRadius: 7, width: 28, height: 28, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}><X size={13} /></button>
+        <div style={{ padding: '28px 26px 26px' }}>
+          {sent ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '1.8rem', color: '#16A34A', marginBottom: 8 }}>✓</div>
+              <h2 id="inventory-help-title" style={{ margin: '0 0 8px', color: '#0B2545', fontSize: '1.2rem' }}>Thanks! We'll be in touch.</h2>
+              <p style={{ margin: '0 0 20px', color: '#64748B', fontSize: '0.85rem', lineHeight: 1.5 }}>Our team can help you find the right inventory.</p>
+              <button type="button" onClick={dismiss} style={{ padding: '9px 22px', border: '1px solid #E2E8F0',
+                borderRadius: 8, background: '#F8FAFC', color: '#0B2545', cursor: 'pointer', fontWeight: 600 }}>Continue browsing</button>
             </div>
+          ) : (
+            <form onSubmit={submit}>
+              <p style={{ margin: '0 0 5px', color: '#FF6B00', fontSize: '0.7rem', fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: 1 }}>Need a hand?</p>
+              <h2 id="inventory-help-title" style={{ margin: '0 0 8px', color: '#0B2545', fontSize: '1.2rem', fontWeight: 700 }}>
+                Can't find what you're looking for?
+              </h2>
+              <p style={{ margin: '0 0 22px', color: '#64748B', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                Leave your email and our team will help you source the right equipment.
+              </p>
+              <label htmlFor="inventory-help-email" style={{ display: 'block', marginBottom: 7, color: '#0B2545',
+                fontSize: '0.78rem', fontWeight: 600 }}>Email address</label>
+              <input id="inventory-help-email" type="email" autoComplete="email" required autoFocus
+                placeholder="you@company.com" value={email} onChange={event => setEmail(event.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', background: '#F8FAFC', border: '1.5px solid #E2E8F0',
+                  borderRadius: 8, color: '#0B2545', fontFamily: 'Inter, sans-serif', fontSize: '0.875rem',
+                  padding: '10px 14px', outline: 'none', marginBottom: 16 }} />
+              <button type="submit" disabled={sending} style={{ width: '100%', padding: '11px 0', border: 'none',
+                borderRadius: 10, background: sending ? '#F1F5F9' : 'linear-gradient(135deg,#FF6B00,#FF8533)',
+                color: sending ? '#94A3B8' : '#fff', fontWeight: 700, fontSize: '0.9rem',
+                cursor: sending ? 'not-allowed' : 'pointer' }}>{sending ? 'Sending…' : 'Help me find it'}</button>
+            </form>
           )}
-
-          {/* Step content with directional slide */}
-          <AnimatePresence mode="wait" custom={directionRef.current}>
-            {/* ── STEP 1: ROLE ── */}
-            {step === 'role' && (
-              <motion.div
-                key="role"
-                custom={directionRef.current}
-                variants={stepVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-              >
-                <p style={{ margin: '0 0 4px', fontFamily: font, fontSize: '0.7rem', fontWeight: 700, color: '#FF6B00', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Quick question
-                </p>
-                <h2 style={{ margin: '0 0 6px', color: '#0B2545', fontFamily: font, fontSize: '1.2rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                  Are you a buyer or a seller?
-                </h2>
-                <p style={{ margin: '0 0 22px', color: '#94A3B8', fontFamily: font, fontSize: '0.82rem' }}>
-                  Help us personalize your experience on SunhubATP.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {[
-                    { r: 'buyer' as Role,  icon: '🛒', title: 'I\'m a Buyer',  desc: 'Looking to purchase solar equipment' },
-                    { r: 'seller' as Role, icon: '📦', title: 'I\'m a Seller', desc: 'Looking to list or move inventory' },
-                  ].map(({ r, icon, title, desc }) => (
-                    <motion.button
-                      key={r}
-                      onClick={() => { setRole(r); directionRef.current = 1; setStep('details'); }}
-                      whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(11,37,69,0.1)' }}
-                      whileTap={{ scale: 0.98 }}
-                      style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                        padding: '16px 14px',
-                        borderRadius: 12,
-                        border: '1.5px solid #E2E8F0',
-                        background: '#F8FAFC',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        gap: 6,
-                      }}
-                    >
-                      <span style={{ fontSize: '1.4rem' }}>{icon}</span>
-                      <span style={{ fontFamily: font, fontSize: '0.88rem', fontWeight: 700, color: '#0B2545' }}>{title}</span>
-                      <span style={{ fontFamily: font, fontSize: '0.72rem', color: '#94A3B8', lineHeight: 1.4 }}>{desc}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── STEP 2a: BUYER DETAILS ── */}
-            {step === 'details' && role === 'buyer' && (
-              <motion.div
-                key="buyer-details"
-                custom={directionRef.current}
-                variants={stepVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-              >
-                <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: font, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                  Tell us about your buying needs
-                </h2>
-                <p style={{ margin: '0 0 20px', color: '#94A3B8', fontFamily: font, fontSize: '0.82rem' }}>
-                  Helps us show you the most relevant inventory.
-                </p>
-
-                <div style={{ marginBottom: 18 }}>
-                  <p style={label}>Purchase timeline</p>
-                  <RadioPills options={TIMELINES} value={timeline} onChange={setTimeline} />
-                </div>
-
-                <div style={{ marginBottom: 24 }}>
-                  <p style={label}>What best describes you?</p>
-                  <RadioPills options={BUYER_TYPES} value={buyerType} onChange={setBuyerType} />
-                </div>
-
-                <button
-                  onClick={handleDetailsNext}
-                  disabled={!buyerReady}
-                  style={{
-                    ...primaryBtn,
-                    background: buyerReady ? 'linear-gradient(135deg,#FF6B00,#FF8533)' : '#F1F5F9',
-                    color: buyerReady ? '#fff' : '#94A3B8',
-                    boxShadow: buyerReady ? '0 3px 12px rgba(255,107,0,0.22)' : 'none',
-                    cursor: buyerReady ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  Continue →
-                </button>
-              </motion.div>
-            )}
-
-            {/* ── STEP 2b: SELLER DETAILS ── */}
-            {step === 'details' && role === 'seller' && (
-              <motion.div
-                key="seller-details"
-                custom={directionRef.current}
-                variants={stepVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-              >
-                <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: font, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                  Tell us about your inventory
-                </h2>
-                <p style={{ margin: '0 0 20px', color: '#94A3B8', fontFamily: font, fontSize: '0.82rem' }}>
-                  We'll help connect you with the right buyers.
-                </p>
-
-                <div style={{ marginBottom: 16 }}>
-                  <label style={label}>Company name <span style={{ color: '#EF4444' }}>*</span></label>
-                  <input
-                    placeholder="Your company name"
-                    value={company}
-                    onChange={e => setCompany(e.target.value)}
-                    style={inp}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 18 }}>
-                  <p style={label}>What do you sell? <span style={{ color: '#EF4444' }}>*</span></p>
-                  <CheckPills options={SELL_CATS} value={sells} onChange={setSells} />
-                </div>
-
-                <div style={{ marginBottom: 24 }}>
-                  <p style={label}>Typical inventory value</p>
-                  <RadioPills options={INV_VALUES} value={inventoryValue} onChange={setInventory} />
-                </div>
-
-                <button
-                  onClick={handleDetailsNext}
-                  disabled={!sellerReady}
-                  style={{
-                    ...primaryBtn,
-                    background: sellerReady ? 'linear-gradient(135deg,#FF6B00,#FF8533)' : '#F1F5F9',
-                    color: sellerReady ? '#fff' : '#94A3B8',
-                    boxShadow: sellerReady ? '0 3px 12px rgba(255,107,0,0.22)' : 'none',
-                    cursor: sellerReady ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  Continue →
-                </button>
-              </motion.div>
-            )}
-
-            {/* ── STEP 3: CONTACT ENRICHMENT ── */}
-            {step === 'contact' && (
-              <motion.div
-                key="contact"
-                custom={directionRef.current}
-                variants={stepVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-              >
-                <form onSubmit={handleContactSubmit}>
-                  <h2 style={{ margin: '0 0 4px', color: '#0B2545', fontFamily: font, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
-                    Almost done
-                  </h2>
-                  <p style={{ margin: '0 0 20px', color: '#94A3B8', fontFamily: font, fontSize: '0.82rem' }}>
-                    Just a few more details so we can reach you with the right deals.
-                  </p>
-
-                  {needName && (
-                    <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>First name {!knownFirst && <span style={{ color: '#EF4444' }}>*</span>}</label>
-                        <input
-                          placeholder="Jane" required={!knownFirst} autoFocus
-                          value={firstName} onChange={e => setFirstName(e.target.value)}
-                          style={inp}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Last name {!knownLast && <span style={{ color: '#EF4444' }}>*</span>}</label>
-                        <input
-                          placeholder="Smith" required={!knownLast}
-                          value={lastName} onChange={e => setLastName(e.target.value)}
-                          style={inp}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {needEmail && (
-                    <div style={{ marginBottom: 14 }}>
-                      <label style={label}>Email address <span style={{ color: '#EF4444' }}>*</span></label>
-                      <input
-                        type="email" required autoFocus={!needName}
-                        placeholder="you@company.com"
-                        value={email} onChange={e => setEmail(e.target.value)}
-                        style={inp}
-                      />
-                    </div>
-                  )}
-
-                  {needPhone && (
-                    <div style={{ marginBottom: 14 }}>
-                      <label style={label}>Phone number</label>
-                      <input
-                        type="tel" placeholder="+1 (555) 000-0000"
-                        value={phone} onChange={e => setPhone(e.target.value)}
-                        style={inp}
-                      />
-                    </div>
-                  )}
-
-                  {needCompany && (
-                    <div style={{ marginBottom: 14 }}>
-                      <label style={label}>Company</label>
-                      <input
-                        placeholder="Your company name"
-                        value={contactCompany} onChange={e => setContactCompany(e.target.value)}
-                        style={inp}
-                      />
-                    </div>
-                  )}
-
-                  <div style={{ marginTop: 22 }}>
-                    <button type="submit" style={primaryBtn}>
-                      {role === 'buyer' ? 'Get personalized deals →' : 'Submit →'}
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
-
-            {/* ── STEP 4: THANKS ── */}
-            {step === 'thanks' && role === 'buyer' && (
-              <motion.div
-                key="thanks-buyer"
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
-                style={{ textAlign: 'center', padding: '10px 0 4px' }}
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 25, delay: 0.06 }}
-                  style={{
-                    width: 50, height: 50, borderRadius: '50%',
-                    background: '#F0FDF4', border: '1.5px solid #86EFAC',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    margin: '0 auto 16px', fontSize: '1.3rem', color: '#16A34A',
-                  }}
-                >✓</motion.div>
-                <h2 style={{ margin: '0 0 8px', color: '#0B2545', fontFamily: font, fontSize: '1.1rem', fontWeight: 700 }}>
-                  You're all set!
-                </h2>
-                <p style={{ margin: '0 0 24px', color: '#94A3B8', fontFamily: font, fontSize: '0.84rem', lineHeight: 1.65 }}>
-                  Thanks for sharing. We'll personalize your<br />SunhubATP experience based on your profile.
-                </p>
-                <button onClick={onClose} style={{
-                  background: '#F8FAFC', border: '1.5px solid #E2E8F0',
-                  color: '#64748B', fontFamily: font,
-                  fontWeight: 600, fontSize: '0.85rem',
-                  padding: '9px 28px', borderRadius: 8, cursor: 'pointer',
-                }}>
-                  Back to listings
-                </button>
-              </motion.div>
-            )}
-
-            {step === 'thanks' && role === 'seller' && (
-              <motion.div
-                key="thanks-seller"
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
-                style={{ textAlign: 'center', padding: '10px 0 4px' }}
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 25, delay: 0.06 }}
-                  style={{
-                    width: 50, height: 50, borderRadius: '50%',
-                    background: '#FFF4EB', border: '1.5px solid #FFD6B8',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    margin: '0 auto 16px', fontSize: '1.5rem',
-                  }}
-                >📦</motion.div>
-                <h2 style={{ margin: '0 0 8px', color: '#0B2545', fontFamily: font, fontSize: '1.1rem', fontWeight: 700 }}>
-                  You're all set!
-                </h2>
-                <p style={{ margin: '0 0 20px', color: '#94A3B8', fontFamily: font, fontSize: '0.84rem', lineHeight: 1.65 }}>
-                  To list your inventory and connect with buyers,<br />create your seller account on Sunhub.
-                </p>
-                <a
-                  href="https://www.sunhub.com/register-business/seller"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'block', width: '100%', boxSizing: 'border-box',
-                    padding: '11px 0', borderRadius: 10, textDecoration: 'none',
-                    background: 'linear-gradient(135deg,#FF6B00,#FF8533)',
-                    color: '#fff', fontFamily: font, fontWeight: 700, fontSize: '0.9rem',
-                    boxShadow: '0 3px 12px rgba(255,107,0,0.22)',
-                    marginBottom: 10, textAlign: 'center',
-                  }}
-                >
-                  Create Seller Account →
-                </a>
-                <button onClick={onClose} style={{
-                  background: 'none', border: 'none',
-                  color: '#94A3B8', fontFamily: font,
-                  fontSize: '0.8rem', cursor: 'pointer', padding: '4px 0',
-                }}>
-                  Close
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
         </div>
       </motion.div>
     </motion.div>

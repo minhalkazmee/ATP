@@ -8,6 +8,7 @@ import { FAQSection } from "./components/FAQSection";
 import { Footer } from "./components/Footer";
 import { WatchlistDrawer, loadPrefs, type WatchlistPrefs } from "./components/WatchlistDrawer";
 import { ProfilePopup } from "./components/ProfilePopup";
+import { useIdleEmailPrompt } from "./hooks/useIdleEmailPrompt";
 import { fetchAllDeals, DealsData } from "./services/sunhubApi";
 import { trackEvent, setTrackedEmail } from "./services/acTrack";
 import { track, initScrollTracking, initTimeTracking } from "./services/analytics";
@@ -84,18 +85,7 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    // Only permanently skip if user already completed the profile
-    // Dismissing (X) only suppresses for the current session
-    const completed  = localStorage.getItem('atp_profile');
-    const dismissed  = sessionStorage.getItem('atp_profile_dismissed');
-    if (!completed && !dismissed) {
-      const t = setTimeout(() => {
-        if (!inquireOpenRef.current) setProfileOpen(true);
-      }, 30000);
-      return () => clearTimeout(t);
-    }
-  }, []);
+  useIdleEmailPrompt(profileOpen, setProfileOpen, inquireOpenRef);
 
   useEffect(() => {
     loadData();
